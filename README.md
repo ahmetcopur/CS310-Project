@@ -1,25 +1,24 @@
 # CS310-Project
 
-Application Name: 
+## Application Name: 
 
-*Group Members & IDs:*
+## Group Members & IDs:
+- Ahmet Mete Çopur (32328)
+- Mehmet Eren Kendirci (32219)
+- Ege Çetinkaya (32661)
+- Ertem Ata Kavaz (32790)
+- Ali Bulut (32354)
 
-#-32328 Ahmet Mete Çopur
-#-32219 Mehmet Eren Kendirci
-#-32661 Ege Çetinkaya
-#-32790 Ertem Ata Kavaz
-#-32354 Ali Bulut
+## Main Purpose:
 
-Main Purpose: 
+## Target Audience:
 
-Target Audience:
+## Key Features:
 
-Key Features:
+## Platform:
 
-Platform: 
+## Data Storage:
 
-Data Storage:
+## Unique Selling Point:
 
-Unique Selling Point:
-
-Challenges:
+## Challenges:
