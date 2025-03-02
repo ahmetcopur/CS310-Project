@@ -1,6 +1,6 @@
 # CS310-Project
 
-## Application Name: 
+## Application Name: SuCredit
 
 ## Group Members & IDs:
 - Ahmet Mete Çopur (32328)
