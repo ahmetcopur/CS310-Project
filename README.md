@@ -19,7 +19,7 @@ Sabanci University students
 - Students will be able to see the level of difficulty a lecture has, based on the feedback of the former takers
 - Lectures will be divided into groups such as core/area/free/required etc. to meet the graduation requirements rigorously
 ## Platform: 
-The app will be developed using Flutter for mobile.
+The app will be developed using Flutter for mobile
 ## Data Storage: 
 - Number of credits a student has taken in core/area/free/required courses
 - Current GPA of the student
