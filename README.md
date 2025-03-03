@@ -18,6 +18,7 @@ Sabanci University students
 - Students can plan their lecture program respective to the hour it's given long before registration system opens
 - Students will be able to see the level of difficulty a lecture has, based on the feedback of the former takers
 - Lectures will be divided into groups such as core/area/free/required etc. to meet the graduation requirements rigorously
+- Students can also find program spesific information of a lecture (CS, IE, MAT etc.) and display the opinions and evaluations of the members of a category on a lecture.
   
 ## Platform: 
 The app will be developed using Flutter for mobile
