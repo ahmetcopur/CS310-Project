@@ -1,4 +1,4 @@
-package com.fluttertest.fluttertest
+package com.example.su_credit
 
 import io.flutter.embedding.android.FlutterActivity
 

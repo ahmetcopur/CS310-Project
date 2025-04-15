@@ -31,3 +31,4 @@ The app will be developed using Flutter for mobile
 This app is the complete package, specifically tailored to Sabanci University students and its system. Providing students both the opportunity to plan their program and help them choose wisely by recommending what courses they might need or need to stay away from in the light of the experience of other students and the graduation criteria
 ## Challenges:
 Extracting and interpreting transcript data, handling inconsistencies in course prerequisites, adapting to curriculum changes and resolving scheduling conflicts are some of the main challenges. Also, if there is not sufficient data the recommendation system might not be as reliable or accurate
+

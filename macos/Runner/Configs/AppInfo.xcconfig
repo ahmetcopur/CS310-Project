@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = fluttertest
+PRODUCT_NAME = su_credit
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.fluttertest.fluttertest
+PRODUCT_BUNDLE_IDENTIFIER = com.example.suCredit
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.fluttertest. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
