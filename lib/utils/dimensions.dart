@@ -32,4 +32,8 @@ class AppDimensions {
 
   static SizedBox verticalSpace(double height) => SizedBox(height: height);
   static SizedBox horizontalSpace(double width) => SizedBox(width: width);
+
+  static get regularParentPadding => const EdgeInsets.all(paddingMedium);
+  static get regularPadding => const EdgeInsets.all(paddingSmall);
+
 }

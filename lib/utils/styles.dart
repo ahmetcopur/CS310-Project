@@ -4,6 +4,7 @@ import 'dimensions.dart';
 
 class AppStyles {
   static final TextStyle screenTitle = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: AppDimensions.fontSizeExtraLarge,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
