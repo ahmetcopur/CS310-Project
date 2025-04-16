@@ -48,14 +48,11 @@ class _LoginState extends State<Login> {
       },
     );
   }
-
   void _login() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      // For demonstration, just print the credentials
       print('Username: $username, Password: $password');
 
-      // Use pushNamed with arguments to navigate to Home
       Navigator.pushNamed(
         context,
         '/home',
@@ -75,7 +72,6 @@ class _LoginState extends State<Login> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Big blue header
             Container(
               height: 400,
               width: double.infinity,
@@ -90,8 +86,6 @@ class _LoginState extends State<Login> {
                 ),
               ),
             ),
-
-            // Overlapping white card
             Transform.translate(
               offset: const Offset(0, -40),
               child: Container(
@@ -114,7 +108,6 @@ class _LoginState extends State<Login> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Username field
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: TextFormField(
@@ -150,8 +143,6 @@ class _LoginState extends State<Login> {
                           onSaved: (value) => username = value ?? '',
                         ),
                       ),
-
-                      // Password field
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: TextFormField(
@@ -190,10 +181,7 @@ class _LoginState extends State<Login> {
                           onSaved: (value) => password = value ?? '',
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      // Login button
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -214,7 +202,6 @@ class _LoginState extends State<Login> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 40),
                     ],
                   ),

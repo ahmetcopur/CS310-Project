@@ -24,16 +24,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SuCredit',
-      // Define only the login route in the routes map
       initialRoute: "/login",
       routes: {
         "/login": (context) => const Login(),
-        // Don't include routes that need parameters in the routes map
       },
-      // Use onGenerateRoute for routes that need parameters
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
-          // Extract the username from arguments
           final args = settings.arguments as Map<String, dynamic>;
           final userName = args['userName'] as String;
 

@@ -21,10 +21,10 @@ class Home extends StatelessWidget {
                 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg',
               ),
             ),
-            const SizedBox(width: 10), // Add spacing between avatar and text
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Prevents column from taking full height
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   userName.isNotEmpty ? userName : 'anon',
@@ -54,7 +54,6 @@ class Home extends StatelessWidget {
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +145,6 @@ class Home extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 16),
-
                   HomeMenuButton(
                     label: 'Course Planning',
                     backgroundColor: const Color(0xFF6AD5B0),
@@ -155,12 +153,10 @@ class Home extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 16),
-
                   HomeMenuButton(
                     label: 'GPA Tracker',
                     backgroundColor: const Color(0xFFF9D24F),
                     onTap: () {
-                      // Navigate to GPA Tracker
                       Navigator.pushNamed(context, '/gpa_tracker');
                     },
                   ),
