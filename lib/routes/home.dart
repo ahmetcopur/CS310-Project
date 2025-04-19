@@ -44,14 +44,6 @@ class Home extends StatelessWidget {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            color: AppColors.surface,
-            onPressed: () {
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Column(
