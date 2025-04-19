@@ -6,7 +6,7 @@ import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 
 class Login extends StatefulWidget {
-  const Login({Key? key}) : super(key: key);
+  const Login({super.key});
 
   @override
   State<Login> createState() => _LoginState();
@@ -48,15 +48,17 @@ class _LoginState extends State<Login> {
       },
     );
   }
+
   void _login() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       print('Username: $username, Password: $password');
 
-      Navigator.pushNamed(
+      Navigator.push(
         context,
-        '/home',
-        arguments: {'userName': username},
+        MaterialPageRoute(
+          builder: (_) => Home(userName: username),
+        ),
       );
     } else {
       _showDialog(
@@ -81,7 +83,7 @@ class _LoginState extends State<Login> {
               child: Text(
                 'SUcredit',
                 style: AppStyles.screenTitle.copyWith(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   fontSize: 80,
                 ),
               ),
@@ -94,7 +96,7 @@ class _LoginState extends State<Login> {
                 padding: const EdgeInsets.all(24),
                 constraints: const BoxConstraints(minHeight: 350),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: const [
                     BoxShadow(

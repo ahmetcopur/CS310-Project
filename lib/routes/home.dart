@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
-import 'package:su_credit/utils/styles.dart';
 
 class Home extends StatelessWidget {
   final String userName;
@@ -29,7 +28,7 @@ class Home extends StatelessWidget {
                 Text(
                   userName.isNotEmpty ? userName : 'anon',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -48,7 +47,7 @@ class Home extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.menu),
-            color: Colors.white,
+            color: AppColors.surface,
             onPressed: () {
             },
           ),
@@ -90,7 +89,7 @@ class Home extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.indigo[900],
+                  color: AppColors.heading,
                 ),
               ),
             ),
@@ -112,7 +111,7 @@ class Home extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.indigo[900],
+                  color: AppColors.heading,
                 ),
               ),
             ),
@@ -173,7 +172,7 @@ class Home extends StatelessWidget {
 
 class BulletText extends StatelessWidget {
   final String text;
-  const BulletText(this.text, {Key? key}) : super(key: key);
+  const BulletText(this.text, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +185,7 @@ class BulletText extends StatelessWidget {
             '• ',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           Expanded(
@@ -194,7 +193,7 @@ class BulletText extends StatelessWidget {
               text,
               style: const TextStyle(
                 fontSize: 16,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -210,11 +209,11 @@ class HomeMenuButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const HomeMenuButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.backgroundColor,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +232,7 @@ class HomeMenuButton extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.surface,
             ),
           ),
         ),

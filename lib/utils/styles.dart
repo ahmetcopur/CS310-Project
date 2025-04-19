@@ -34,21 +34,9 @@ class AppStyles {
     color: AppColors.textSecondary,
   );
 
-  static final TextStyle warningText = TextStyle(
-    fontSize: AppDimensions.fontSizeMedium,
-    fontWeight: FontWeight.bold,
-    color: AppColors.warning,
-  );
-
   static final TextStyle buttonText = TextStyle(
     fontSize: AppDimensions.fontSizeMedium,
     fontWeight: FontWeight.w600,
     color: AppColors.surface,
-  );
-
-  static final TextStyle errorText = TextStyle(
-    fontSize: AppDimensions.fontSizeSmall,
-    fontWeight: FontWeight.w500,
-    color: AppColors.error,
   );
 }
