@@ -6,6 +6,7 @@ final ValueNotifier<List<Set<_Course>>> savedSchedules =
 ValueNotifier<List<Set<_Course>>>([]);
 
 enum Day { mon, tue, wed, thu, fri }
+
 extension on Day {
   String get label => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][index];
 }
@@ -43,14 +44,14 @@ class _SchedulePageState extends State<SchedulePage> {
     _Course('CS302–Formal Languages', const _Meeting(Day.tue, 12, 15)),
     _Course('CS305–Programming Languages', const _Meeting(Day.thu, 8, 11)),
   ];
-
   final Set<_Course> _selected = {};
   String _query = '';
 
   @override
   void initState() {
     super.initState();
-    if (widget.index >= 0 && widget.index < savedSchedules.value.length) {
+    if (widget.index >= 0 &&
+        widget.index < savedSchedules.value.length) {
       _selected.addAll(savedSchedules.value[widget.index]);
     }
   }
@@ -98,18 +99,12 @@ class _SchedulePageState extends State<SchedulePage> {
               borderRadius: BorderRadius.circular(32),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          hintText: 'Search courses…',
-                          border: InputBorder.none,
-                        ),
-                        onChanged: (v) => setState(() => _query = v.trim()),
-                      ),
-                    ),
-                  ],
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search courses…',
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (v) => setState(() => _query = v.trim()),
                 ),
               ),
             ),
@@ -118,12 +113,7 @@ class _SchedulePageState extends State<SchedulePage> {
             height: 210,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _catalog
-                  .where((c) =>
-              _query.isEmpty ||
-                  c.title.toLowerCase().contains(_query.toLowerCase()))
-                  .map(_courseTile)
-                  .toList(),
+              children: _catalog.where((c) => _query.isEmpty || c.title.toLowerCase().contains(_query.toLowerCase())).map(_courseTile).toList(),
             ),
           ),
           Expanded(
@@ -155,15 +145,14 @@ class _SchedulePageState extends State<SchedulePage> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
         dense: true,
-        // leading icon removed per request
         title: Text(c.title, overflow: TextOverflow.ellipsis),
         trailing: IconButton(
           icon: Icon(
             picked ? Icons.bookmark : Icons.bookmark_border,
             color: picked ? Colors.amber : Colors.grey,
           ),
-          onPressed: () =>
-              setState(() => picked ? _selected.remove(c) : _selected.add(c)),
+          onPressed: () => setState(() =>
+          picked ? _selected.remove(c) : _selected.add(c)),
         ),
       ),
     );
@@ -178,6 +167,7 @@ class _TimeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // build occupancy matrix
     final matrix = <Day, Map<int, _Course?>>{
       for (var d in Day.values) d: {for (var h in _hours) h: null}
     };
@@ -189,20 +179,36 @@ class _TimeTable extends StatelessWidget {
 
     final headerCells = <Widget>[];
     headerCells.add(_headerCell('Time'));
-    for (final d in Day.values) headerCells.add(_headerCell(d.label));
+    for (final d in Day.values) {
+      headerCells.add(_headerCell(d.label));
+    }
+    final headerRow = TableRow(
+      decoration:
+      const BoxDecoration(color: AppColors.background),
+      children: headerCells,
+    );
 
     final bodyRows = <TableRow>[];
     for (final h in _hours) {
       final rowCells = <Widget>[];
       rowCells.add(_timeCell(h));
-      for (final d in Day.values) rowCells.add(_courseCell(matrix[d]![h]));
+      for (final d in Day.values) {
+        rowCells.add(_courseCell(matrix[d]![h]));
+      }
       bodyRows.add(TableRow(children: rowCells));
+    }
+
+    final allRows = <TableRow>[];
+    allRows.add(headerRow);
+    for (final r in bodyRows) {
+      allRows.add(r);
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Table(
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        defaultVerticalAlignment:
+        TableCellVerticalAlignment.middle,
         columnWidths: const {
           0: FixedColumnWidth(60),
           1: FixedColumnWidth(80),
@@ -211,14 +217,9 @@ class _TimeTable extends StatelessWidget {
           4: FixedColumnWidth(80),
           5: FixedColumnWidth(80),
         },
-        border: TableBorder.all(color: AppColors.text, width: .8),
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: AppColors.backgroundColor),
-            children: headerCells,
-          ),
-          ...bodyRows,
-        ],
+        border:
+        TableBorder.all(color: AppColors.text, width: .8),
+        children: allRows,
       ),
     );
   }
@@ -227,7 +228,8 @@ class _TimeTable extends StatelessWidget {
     height: 32,
     alignment: Alignment.center,
     child: Text(t,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        style: const TextStyle(
+            fontWeight: FontWeight.bold, fontSize: 12)),
   );
 
   Widget _timeCell(int h) => Container(
@@ -242,6 +244,7 @@ class _TimeTable extends StatelessWidget {
     alignment: Alignment.center,
     decoration: BoxDecoration(
         color: c == null ? AppColors.surface : Colors.lightBlueAccent),
-    child: Text(c?.code ?? '', style: const TextStyle(fontSize: 12)),
+    child: Text(c?.code ?? '',
+        style: const TextStyle(fontSize: 12)),
   );
 }
