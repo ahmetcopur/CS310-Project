@@ -6,7 +6,6 @@ final ValueNotifier<List<Set<_Course>>> savedSchedules =
 ValueNotifier<List<Set<_Course>>>([]);
 
 enum Day { mon, tue, wed, thu, fri }
-
 extension on Day {
   String get label => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][index];
 }
@@ -33,6 +32,7 @@ class _Course {
 class SchedulePage extends StatefulWidget {
   final int index;
   const SchedulePage({super.key, required this.index});
+
   @override
   State<SchedulePage> createState() => _SchedulePageState();
 }
@@ -155,15 +155,15 @@ class _SchedulePageState extends State<SchedulePage> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
         dense: true,
-        leading: const Icon(Icons.info_outline, color: AppColors.textPrimary),
+        // leading icon removed per request
         title: Text(c.title, overflow: TextOverflow.ellipsis),
         trailing: IconButton(
           icon: Icon(
             picked ? Icons.bookmark : Icons.bookmark_border,
             color: picked ? Colors.amber : Colors.grey,
           ),
-          onPressed: () => setState(
-                  () => picked ? _selected.remove(c) : _selected.add(c)),
+          onPressed: () =>
+              setState(() => picked ? _selected.remove(c) : _selected.add(c)),
         ),
       ),
     );
@@ -189,17 +189,13 @@ class _TimeTable extends StatelessWidget {
 
     final headerCells = <Widget>[];
     headerCells.add(_headerCell('Time'));
-    for (final d in Day.values) {
-      headerCells.add(_headerCell(d.label));
-    }
+    for (final d in Day.values) headerCells.add(_headerCell(d.label));
 
     final bodyRows = <TableRow>[];
     for (final h in _hours) {
       final rowCells = <Widget>[];
       rowCells.add(_timeCell(h));
-      for (final d in Day.values) {
-        rowCells.add(_courseCell(matrix[d]![h]));
-      }
+      for (final d in Day.values) rowCells.add(_courseCell(matrix[d]![h]));
       bodyRows.add(TableRow(children: rowCells));
     }
 
@@ -218,10 +214,10 @@ class _TimeTable extends StatelessWidget {
         border: TableBorder.all(color: AppColors.text, width: .8),
         children: [
           TableRow(
-            decoration: const BoxDecoration(color: AppColors.background),
+            decoration: const BoxDecoration(color: AppColors.backgroundColor),
             children: headerCells,
           ),
-          ...bodyRows
+          ...bodyRows,
         ],
       ),
     );
@@ -246,11 +242,6 @@ class _TimeTable extends StatelessWidget {
     alignment: Alignment.center,
     decoration: BoxDecoration(
         color: c == null ? AppColors.surface : Colors.lightBlueAccent),
-    child: SizedBox(
-      width: double.infinity,
-      child: Center(
-        child: Text(c?.code ?? '', style: const TextStyle(fontSize: 12)),
-      ),
-    ),
+    child: Text(c?.code ?? '', style: const TextStyle(fontSize: 12)),
   );
 }

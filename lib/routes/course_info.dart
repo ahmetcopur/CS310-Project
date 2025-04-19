@@ -29,6 +29,19 @@ Prerequisites: MATH204 (Min.Grade:D)
     description: '''
 This course is about the analysis and design of computer algorithms. We will study various methods to analyze the correctness and asymptotic performance of algorithms, important algorithms (e.g., search, sort, path finding, spanning tree, network flow) and data structures (e.g., dynamic sets, augmented data structures), algorithmic design paradigms (e.g., randomized, divide‑and‑conquer, dynamic programming, greedy, incremental), and hardness of problems (e.g., NP‑completeness, reductions, approximation algorithms).''',
   ),
+  'CS302': _CourseData(
+    info: '''
+CS302 - Formal Languages and Automata
+Credits: 3.000
+Campus: Sabanci University
+Lecture Type: Interactive,Learner centered,Communicative''',
+    requirements: '''
+Undergraduate only
+Corequisite: CS302R
+Prerequisites: --''',
+    description: '''
+This course introduces the mathematical foundations of computer languages and computation. You’ll study the Chomsky hierarchy of grammars, regular languages and expressions, and both deterministic and nondeterministic finite automata (including determinization and minimization). You’ll learn the pumping lemmas and closure properties for regular and context‑free languages, explore context‑free grammars and push‑down automata, and get an introductory look at Turing machines. Throughout, you’ll examine the algorithms and complexity bounds for key decision problems in language theory.''',
+  ),
 };
 
 class CourseDetailPage extends StatefulWidget {
