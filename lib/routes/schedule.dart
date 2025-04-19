@@ -167,7 +167,6 @@ class _TimeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // build occupancy matrix
     final matrix = <Day, Map<int, _Course?>>{
       for (var d in Day.values) d: {for (var h in _hours) h: null}
     };
