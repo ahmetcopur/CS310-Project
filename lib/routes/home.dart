@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Home extends StatelessWidget {
   final String userName;
@@ -44,6 +45,21 @@ class Home extends StatelessWidget {
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(
+                color: AppColors.surface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
