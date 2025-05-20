@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:su_credit/utils/dimensions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // for Timestamp
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../providers/comment_provider.dart';
+import '../models/comment.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final String courseName;
@@ -19,29 +22,34 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
   late final String _courseId;
+  // no flags needed
 
   @override
   void initState() {
     super.initState();
     _courseId = widget.courseName.split(' ').first;
+    // Load comments after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CommentProvider>().loadCommentsForCourse(_courseId);
+    });
   }
 
-  // Add a comment to Firestore
+  // Add a comment via provider
   void _addComment() async {
     final text = _ctrl.text.trim();
     if (text.isEmpty || _selectedRating == 0 || _currentUserId == null) return;
 
     try {
-      final commentData = {
-        'courseId': _courseId,
-        'text': text,
-        'rating': _selectedRating,
-        'date': FieldValue.serverTimestamp(),
-        'userId': _currentUserId,
-      };
-
-      // Add to Firestore - will automatically update UI via Stream
-      await _firestore.collection('courseComments').add(commentData);
+      // Create Comment model and add via provider
+      final comment = Comment(
+        id: '',
+        courseId: _courseId,
+        text: text,
+        rating: _selectedRating,
+        date: DateTime.now(),
+        userId: _currentUserId,
+      );
+      await context.read<CommentProvider>().addComment(comment);
 
       // Clear input fields
       setState(() {
@@ -81,13 +89,16 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Course Info from Firestore using real-time listener
-            StreamBuilder<DocumentSnapshot>(
-                stream: _firestore.collection('courses').doc(_courseId).snapshots(),
+            StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('courses')
+                    .where('code', isEqualTo: _courseId)
+                    .limit(1)
+                    .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   }
-
                   if (snapshot.hasError) {
                     return Center(
                       child: Text(
@@ -96,8 +107,8 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                       ),
                     );
                   }
-
-                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                  final docs = snapshot.data?.docs;
+                  if (docs == null || docs.isEmpty) {
                     return Center(
                       child: Text(
                         'Course not found',
@@ -105,9 +116,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                       ),
                     );
                   }
-
-                  // Extract course data
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  // Use the first matching document
+                  final doc = docs.first;
+                  final data = doc.data() as Map<String, dynamic>;
 
                   // Format course info
                   final String code = data['code'] ?? 'Unknown';
@@ -201,44 +212,26 @@ Prerequisites: $semester''';
 
             const SizedBox(height: 24),
 
-            // Comments from Firestore using real-time listener
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('courseComments')
-                  .where('courseId', isEqualTo: _courseId)
-                  .orderBy('date', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            // Comments via CommentProvider
+            Consumer<CommentProvider>(
+              builder: (_, commentProv, __) {
+                if (commentProv.isLoading) {
                   return Center(child: CircularProgressIndicator());
                 }
-
-                if (snapshot.hasError) {
+                if (commentProv.error != null) {
                   return Center(
                     child: Text(
-                      'Error loading comments: ${snapshot.error}',
+                      'Error loading comments: ${commentProv.error}',
                       style: AppStyles.bodyTextSecondary,
                     ),
                   );
                 }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                final comments = commentProv.comments;
+                if (comments.isEmpty) {
                   return Center(
                     child: Text('No comments yet', style: AppStyles.bodyTextSecondary),
                   );
                 }
-
-                // Convert snapshot to comments
-                final comments = snapshot.data!.docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return _Comment(
-                    id: doc.id,
-                    text: data['text'] ?? '',
-                    rating: data['rating'] ?? 0,
-                    date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-                  );
-                }).toList();
-
                 return Column(
                   children: comments.map((c) => _commentTile(c)).toList(),
                 );
@@ -269,7 +262,7 @@ Prerequisites: $semester''';
     ],
   );
 
-  Widget _commentTile(_Comment c) => Container(
+  Widget _commentTile(Comment c) => Container(
     decoration: BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
@@ -297,12 +290,4 @@ Prerequisites: $semester''';
       ],
     ),
   );
-}
-
-class _Comment {
-  final String? id;
-  final String text;
-  final int rating;
-  final DateTime date;
-  _Comment({this.id, required this.text, required this.rating, required this.date});
 }

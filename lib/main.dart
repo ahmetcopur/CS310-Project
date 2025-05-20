@@ -20,6 +20,7 @@ import 'package:su_credit/providers/course_provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
 import 'package:su_credit/providers/course_provider.dart';
 import 'package:su_credit/providers/assignment_provider.dart';
+import 'package:su_credit/providers/comment_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -42,6 +43,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => app_auth.AuthProvider()),
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
+        ChangeNotifierProvider(create: (_) => CommentProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -86,8 +88,9 @@ class MyApp extends StatelessWidget {
                   : const Login();
               break;
             case '/course_info':
-              page = (user != null)
-                  ? const CourseDetailPage(courseName: '')
+              final courseName = settings.arguments as String?;
+              page = (user != null && courseName != null)
+                  ? CourseDetailPage(courseName: courseName)
                   : const Login();
               break;
             case '/search_courses':
