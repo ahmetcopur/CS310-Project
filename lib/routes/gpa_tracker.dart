@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
-import 'package:provider/provider.dart';
-import 'package:su_credit/providers/course_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -56,38 +54,32 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
     });
 
     try {
-      // First, try to get courses from CourseProvider (completed courses with grades)
-      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
-      final gpa = await courseProvider.calculateGPA();
-
-      // Get all courses that have grades
-      final courseSnapshot = await _firestore
-          .collection('courses')
+      // Load user-specific course entries
+      final userCourseSnapshots = await _firestore
+          .collection('user_course_data')
           .where('createdBy', isEqualTo: _userId)
           .where('isCompleted', isEqualTo: true)
           .get();
-
-      final loadedCourses = courseSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return _Course(
-          id: doc.id,
-          code: data['code'] ?? '',
-          grade: data['letterGrade'] ?? 'N/A',
-        );
-      }).toList();
-
-      // If no courses are found, use the placeholders
+      final List<_Course> loadedCourses = [];
+      for (var ucDoc in userCourseSnapshots.docs) {
+        final ucData = ucDoc.data();
+        final courseId = ucData['courseId'] as String? ?? '';
+        final letterGrade = ucData['letterGrade'] as String? ?? 'N/A';
+        // Fetch course code
+        final courseDoc = await _firestore.collection('courses').doc(courseId).get();
+        final courseCode = courseDoc.data()?['code'] as String? ?? '';
+        loadedCourses.add(_Course(id: ucDoc.id, code: courseCode, grade: letterGrade));
+      }
       if (loadedCourses.isEmpty) {
         _loadPlaceholderCourses();
       } else {
         setState(() {
           _courses = loadedCourses;
-          _gpa = gpa;
+          _gpa = _calculateLocalGPA();
           _isLoading = false;
         });
       }
     } catch (e) {
-      // On error, use default placeholder data
       _loadPlaceholderCourses();
     }
   }
@@ -124,53 +116,62 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
     if (_userId == null) return;
 
     try {
-      // First check if the course already exists
-      final querySnapshot = await _firestore
-          .collection('courses')
-          .where('createdBy', isEqualTo: _userId)
+      // Resolve or create course document
+      String courseId;
+      final courseSnap = await _firestore.collection('courses')
           .where('code', isEqualTo: code)
           .limit(1)
           .get();
+      if (courseSnap.docs.isNotEmpty) {
+        courseId = courseSnap.docs.first.id;
+      } else {
+        final newCourse = await _firestore.collection('courses').add({
+          'code': code,
+          'name': code,
+          'credits': 3,
+          'instructor': null,
+          'sessions': [],
+          'requirements': [],
+        });
+        courseId = newCourse.id;
+      }
 
-      if (querySnapshot.docs.isNotEmpty) {
-        // Update existing course
-        final docId = querySnapshot.docs.first.id;
-        await _firestore.collection('courses').doc(docId).update({
+      // Upsert user course data
+      final ucColl = _firestore.collection('user_course_data');
+      final ucQuery = await ucColl
+          .where('createdBy', isEqualTo: _userId)
+          .where('courseId', isEqualTo: courseId)
+          .limit(1)
+          .get();
+      if (ucQuery.docs.isNotEmpty) {
+        final docId = ucQuery.docs.first.id;
+        await ucColl.doc(docId).update({
           'letterGrade': grade,
           'grade': gradePoints[grade],
           'isCompleted': true,
-          'updatedAt': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
         });
-
         setState(() {
-          _courses = _courses.map((c) =>
-          c.code == code ? _Course(id: c.id, code: code, grade: grade) : c
-          ).toList();
+          _courses = _courses
+              .map((c) => c.code == code ? _Course(id: docId, code: code, grade: grade) : c)
+              .toList();
         });
       } else {
-        // Create a new course
-        final docRef = await _firestore.collection('courses').add({
-          'code': code,
-          'name': code, // Use code as name for simplicity
-          'credits': 3, // Default value
+        final docRef = await ucColl.add({
+          'createdBy': _userId,
+          'courseId': courseId,
           'letterGrade': grade,
           'grade': gradePoints[grade],
           'isCompleted': true,
-          'createdBy': _userId,
           'createdAt': FieldValue.serverTimestamp(),
-          'semester': 'Current', // Default value
         });
-
         setState(() {
           _courses.add(_Course(id: docRef.id, code: code, grade: grade));
         });
       }
-
-      // Recalculate GPA
-      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
-      final newGpa = await courseProvider.calculateGPA();
+      // Update GPA locally
       setState(() {
-        _gpa = newGpa;
+        _gpa = _calculateLocalGPA();
       });
     } catch (e) {
       // If Firebase fails, just add to local state
@@ -190,22 +191,18 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
       _gpa = _calculateLocalGPA(); // Update local GPA immediately for UI
     });
 
-    if (_userId == null || course.id == null) return;
+    if (_userId == null) return;
 
     try {
-      // Delete from Firestore if it has an ID
-      await _firestore.collection('courses').doc(course.id).update({
+      // Mark entry incomplete in user_course_data
+      await _firestore.collection('user_course_data').doc(course.id).update({
         'isCompleted': false,
         'letterGrade': null,
         'grade': null,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       // Recalculate GPA
-      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
-      final newGpa = await courseProvider.calculateGPA();
-      setState(() {
-        _gpa = newGpa;
-      });
     } catch (e) {
       // If update fails, just continue with local state update
     }

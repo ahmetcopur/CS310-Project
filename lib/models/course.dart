@@ -49,17 +49,8 @@ class Course {
   final String code;
   final String name;
   final int credits;
-  final String semester;
   final String? instructor;
-  final String createdBy;
-  final DateTime createdAt;
-  final double? grade;
-  final String? letterGrade;
-  final bool isCompleted;
-
-  // List of sessions instead of single day/time
   final List<CourseSession> sessions;
-  // List of prerequisite course codes
   final List<String> requirements;
 
   Course({
@@ -67,13 +58,7 @@ class Course {
     required this.code,
     required this.name,
     required this.credits,
-    required this.semester,
     this.instructor,
-    required this.createdBy,
-    required this.createdAt,
-    this.grade,
-    this.letterGrade,
-    this.isCompleted = false,
     this.sessions = const [],
     this.requirements = const [],
   });
@@ -100,15 +85,7 @@ class Course {
       code: data['code'] ?? '',
       name: data['name'] ?? '',
       credits: data['credits'] ?? 0,
-      semester: data['semester'] ?? '',
       instructor: data['instructor'],
-      createdBy: data['createdBy'] ?? '',
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      grade: data['grade']?.toDouble(),
-      letterGrade: data['letterGrade'],
-      isCompleted: data['isCompleted'] ?? false,
       sessions: sessions,
       requirements: requirements,
     );
@@ -138,15 +115,7 @@ class Course {
       code: data['code'] ?? '',
       name: data['name'] ?? '',
       credits: data['credits'] ?? 0,
-      semester: data['semester'] ?? '',
       instructor: data['instructor'],
-      createdBy: data['createdBy'] ?? '',
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      grade: data['grade']?.toDouble(),
-      letterGrade: data['letterGrade'],
-      isCompleted: data['isCompleted'] ?? false,
       sessions: sessions,
       requirements: requirements,
     );
@@ -158,13 +127,7 @@ class Course {
       'code': code,
       'name': name,
       'credits': credits,
-      'semester': semester,
       'instructor': instructor,
-      'createdBy': createdBy,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'grade': grade,
-      'letterGrade': letterGrade,
-      'isCompleted': isCompleted,
       'sessions': sessions.map((session) => session.toMap()).toList(),
       'requirements': requirements,
     };
@@ -180,11 +143,7 @@ class Course {
     String? code,
     String? name,
     int? credits,
-    String? semester,
     String? instructor,
-    double? grade,
-    String? letterGrade,
-    bool? isCompleted,
     List<CourseSession>? sessions,
     List<String>? requirements,
   }) {
@@ -193,13 +152,7 @@ class Course {
       code: code ?? this.code,
       name: name ?? this.name,
       credits: credits ?? this.credits,
-      semester: semester ?? this.semester,
       instructor: instructor ?? this.instructor,
-      createdBy: this.createdBy,
-      createdAt: this.createdAt,
-      grade: grade ?? this.grade,
-      letterGrade: letterGrade ?? this.letterGrade,
-      isCompleted: isCompleted ?? this.isCompleted,
       sessions: sessions ?? this.sessions,
       requirements: requirements ?? this.requirements,
     );

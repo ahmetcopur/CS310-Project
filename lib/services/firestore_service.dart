@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:su_credit/models/course.dart';
 import 'package:su_credit/models/assignment.dart';
+import 'package:su_credit/models/user_course_data.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,30 +11,16 @@ class FirestoreService {
   // Course CRUD Operations
   // ======================
 
-  // Create a new course
+  // Create a new course definition
   Future<String> addCourse(Course course) async {
     final docRef = await _firestore.collection('courses').add(course.toMap());
     return docRef.id;
   }
 
-  // Read all courses for current user
-  Stream<List<Course>> getUserCourses() {
+  // Read all global course definitions
+  Stream<List<Course>> getAllCourses() {
     return _firestore
         .collection('courses')
-        .where('createdBy', isEqualTo: _userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => Course.fromMap(doc.data(), doc.id))
-        .toList());
-  }
-
-  // Read courses for a specific semester
-  Stream<List<Course>> getCoursesBySemester(String semester) {
-    return _firestore
-        .collection('courses')
-        .where('createdBy', isEqualTo: _userId)
-        .where('semester', isEqualTo: semester)
         .snapshots()
         .map((snapshot) => snapshot.docs
         .map((doc) => Course.fromMap(doc.data(), doc.id))
@@ -45,19 +32,8 @@ class FirestoreService {
     await _firestore.collection('courses').doc(course.id).update(course.toMap());
   }
 
-  // Delete a course
+  // Delete a course definition
   Future<void> deleteCourse(String courseId) async {
-    // First, delete all assignments related to this course
-    final assignmentQuery = await _firestore
-        .collection('assignments')
-        .where('courseId', isEqualTo: courseId)
-        .get();
-
-    for (var doc in assignmentQuery.docs) {
-      await doc.reference.delete();
-    }
-
-    // Then delete the course
     await _firestore.collection('courses').doc(courseId).delete();
   }
 
@@ -111,25 +87,35 @@ class FirestoreService {
     await _firestore.collection('assignments').doc(assignmentId).delete();
   }
 
-  // Calculate GPA
-  Future<double> calculateGPA() async {
-    final courseQuery = await _firestore
-        .collection('courses')
+  // User-specific course data CRUD
+  Stream<List<UserCourseData>> getUserCourseData() {
+    return _firestore
+        .collection('user_course_data')
         .where('createdBy', isEqualTo: _userId)
-        .where('isCompleted', isEqualTo: true)
-        .get();
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+        .map((doc) => UserCourseData.fromMap(doc.data(), doc.id))
+        .toList());
+  }
 
-    double totalPoints = 0;
-    int totalCredits = 0;
+  Future<String> addUserCourseData(UserCourseData ucd) async {
+    final docRef = await _firestore
+        .collection('user_course_data')
+        .add(ucd.toMap());
+    return docRef.id;
+  }
 
-    for (var doc in courseQuery.docs) {
-      final course = Course.fromMap(doc.data(), doc.id);
-      if (course.grade != null) {
-        totalPoints += course.grade! * course.credits;
-        totalCredits += course.credits;
-      }
-    }
+  Future<void> updateUserCourseData(UserCourseData ucd) async {
+    await _firestore
+        .collection('user_course_data')
+        .doc(ucd.id)
+        .set(ucd.toMap());
+  }
 
-    return totalCredits > 0 ? totalPoints / totalCredits : 0.0;
+  Future<void> deleteUserCourseData(String id) async {
+    await _firestore
+        .collection('user_course_data')
+        .doc(id)
+        .delete();
   }
 }

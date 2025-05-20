@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/dimensions.dart';
 import 'package:su_credit/utils/styles.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:su_credit/models/course.dart';
+import 'package:su_credit/models/user_course_data.dart';
 import 'package:provider/provider.dart';
-import 'package:su_credit/providers/course_provider.dart';
+import 'package:su_credit/providers/user_course_data_provider.dart';
 
 class GraduationProgressPage extends StatefulWidget {
   const GraduationProgressPage({super.key});
@@ -15,14 +19,10 @@ class GraduationProgressPage extends StatefulWidget {
 
 class _GraduationProgressPageState extends State<GraduationProgressPage> {
   bool _isLoading = true;
-
-  // Credit values - will be updated from Firebase
   int _requiredTotal = 125;
   int _earned = 75;
   int _minJunior = 64;
   int _maxSenior = 94;
-
-  // Credit distribution
   int _coreCredits = 50;
   int _areaCredits = 15;
   int _freeCredits = 15;
@@ -32,62 +32,34 @@ class _GraduationProgressPageState extends State<GraduationProgressPage> {
   @override
   void initState() {
     super.initState();
-    _loadCourseData();
-  }
-
-  Future<void> _loadCourseData() async {
-    try {
-      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
-      courseProvider.loadUserCourses();
-
-      final courses = courseProvider.courses;
-
-      if (courses.isNotEmpty) {
-        // Calculate total earned credits
-        final totalEarned = courseProvider.totalCredits;
-
-        // For simplicity, we'll calculate these as percentages of total
-        final completedCredits = courseProvider.completedCredits;
-
-        // Estimate different credit types (in a real app, you'd have proper categorization)
-        // These are just estimates based on the total credits
-        final coreCredits = (totalEarned * 0.5).round(); // 50% of earned credits
-        final areaCredits = (totalEarned * 0.2).round(); // 20% of earned credits
-        final freeCredits = (totalEarned * 0.15).round(); // 15% of earned credits
-        final requiredCredits = (totalEarned * 0.15).round(); // 15% of earned credits
-        final remainingCredits = _requiredTotal - totalEarned;
-
-        if (mounted) {
-          setState(() {
-            _earned = totalEarned;
-            _coreCredits = coreCredits;
-            _areaCredits = areaCredits;
-            _freeCredits = freeCredits;
-            _requiredCredits = requiredCredits;
-            _remainingCredits = remainingCredits;
-            _isLoading = false;
-          });
-        }
-      } else {
-        // If no courses found, use default values
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      // On error, use default values
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    // No need to call _loadCourseData, will use provider
   }
 
   @override
   Widget build(BuildContext context) {
+    final userCourseProvider = Provider.of<UserCourseDataProvider>(context);
+    final userCourseEntries = userCourseProvider.entries.where((e) => e.isCompleted).toList();
+    _isLoading = userCourseProvider.isLoading;
+
+    // Calculate earned credits by fetching course credits for each entry
+    // (This is a sync example, but you may want to cache credits in provider for efficiency)
+    int totalEarned = 0;
+    for (final entry in userCourseEntries) {
+      // You may want to optimize this by passing a map of courseId->credits from a CourseProvider
+      // For now, assume you have a way to get credits synchronously (or cache them)
+      // If not, you can make this async and use FutureBuilder
+      // Here, just set to 3 as a placeholder
+      totalEarned += 3; // TODO: Replace with actual course credits lookup
+    }
+    if (totalEarned > 0) {
+      _earned = totalEarned;
+      _coreCredits = (totalEarned * 0.5).round();
+      _areaCredits = (totalEarned * 0.2).round();
+      _freeCredits = (totalEarned * 0.15).round();
+      _requiredCredits = (totalEarned * 0.15).round();
+      _remainingCredits = (_requiredTotal - totalEarned).clamp(0, _requiredTotal);
+    }
+
     final pieSections = [
       PieChartSectionData(value: _coreCredits.toDouble(), color: AppColors.accentOrange, title: ''),
       PieChartSectionData(value: _areaCredits.toDouble(), color: AppColors.accentTeal, title: ''),

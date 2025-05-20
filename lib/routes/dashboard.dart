@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:provider/provider.dart';
-import 'package:su_credit/providers/course_provider.dart';
 import 'package:su_credit/providers/assignment_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -25,12 +25,38 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Future<void> _loadDashboardData() async {
-    final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+    // Compute GPA from user_course_data
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    double gpa = 0.0;
+    if (userId != null && userId.isNotEmpty) {
+      final ucdSnapshot = await FirebaseFirestore.instance
+          .collection('user_course_data')
+          .where('createdBy', isEqualTo: userId)
+          .where('isCompleted', isEqualTo: true)
+          .get();
+      double totalPoints = 0;
+      int totalCredits = 0;
+      for (var doc in ucdSnapshot.docs) {
+        final data = doc.data();
+        final gradeValue = (data['grade'] as num?)?.toDouble() ?? 0.0;
+        final courseId = data['courseId'] as String? ?? '';
+        final courseDoc = await FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .get();
+        if (courseDoc.exists) {
+          final credits = (courseDoc.data()?['credits'] as num?)?.toInt() ?? 0;
+          totalPoints += gradeValue * credits;
+          totalCredits += credits;
+        }
+      }
+      gpa = totalCredits > 0 ? totalPoints / totalCredits : 0.0;
+    }
+
     final assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
 
     try {
-      // Load GPA from Firestore
-      final gpa = await courseProvider.calculateGPA();
+      _currentGPA = gpa;
 
       // Load upcoming assignments without awaiting (it's a void method)
       assignmentProvider.loadUpcomingAssignments();

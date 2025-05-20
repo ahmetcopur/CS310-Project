@@ -18,6 +18,7 @@ import 'package:su_credit/providers/auth_provider.dart' as app_auth;
 import 'package:su_credit/providers/course_provider.dart';
 import 'package:su_credit/providers/assignment_provider.dart';
 import 'package:su_credit/providers/comment_provider.dart';
+import 'package:su_credit/providers/user_course_data_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
         ChangeNotifierProvider(create: (_) => CommentProvider()),
+        ChangeNotifierProvider(create: (_) => UserCourseDataProvider()), // <-- Added
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:provider/provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
-import 'package:su_credit/providers/course_provider.dart';
-import 'package:su_credit/providers/assignment_provider.dart';
+import 'add_given_courses.dart';
 
 class Home extends StatefulWidget {
   final String userName;
@@ -18,19 +17,13 @@ class _HomeState extends State<Home> {
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _todayClasses = [];
   List<Map<String, dynamic>> _tomorrowClasses = [];
-  double _currentGPA = 0.0;
-  int _upcomingAssignments = 0;
   late final app_auth.AuthProvider _authProvider;
-  late final CourseProvider _courseProvider;
-  late final AssignmentProvider _assignmentProvider;
 
   @override
   void initState() {
     super.initState();
     // Initialize providers here to avoid async context issues
     _authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
-    _courseProvider = Provider.of<CourseProvider>(context, listen: false);
-    _assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
     _loadUserData();
   }
 
@@ -43,12 +36,7 @@ class _HomeState extends State<Home> {
       // Load user profile
       final userProfile = await _authProvider.getUserProfile();
 
-      // Load GPA
-      final gpa = await _courseProvider.calculateGPA();
-
-      // Load assignments
-      _assignmentProvider.loadUpcomingAssignments();
-      // Use a SizedBox instead of delay for whitespace
+      // Simulate whitespace delay
       await Future.delayed(Duration(milliseconds: 300));
 
       // Load today's and tomorrow's classes (simulated)
@@ -58,8 +46,6 @@ class _HomeState extends State<Home> {
       if (mounted) {
         setState(() {
           _userProfile = userProfile;
-          _currentGPA = gpa;
-          _upcomingAssignments = _assignmentProvider.assignments.length;
           _todayClasses = todayClasses;
           _tomorrowClasses = tomorrowClasses;
           _isLoading = false;
@@ -115,42 +101,51 @@ class _HomeState extends State<Home> {
         elevation: 0,
         title: _isLoading
             ? SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(color: AppColors.surface, strokeWidth: 2)
-        )
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(color: AppColors.surface, strokeWidth: 2))
             : Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: NetworkImage(
-                _userProfile?['profileImage'] ?? 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg',
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddGivenCoursesPage(),
+                        ),
+                      );
+                    },
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(
+                        _userProfile?['profileImage'] ?? 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _userProfile?['name'] ?? widget.userName,
+                        style: const TextStyle(
+                          color: AppColors.surface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        _userProfile?['faculty'] ?? 'Faculty of Engineering and Natural Sciences',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _userProfile?['name'] ?? widget.userName,
-                  style: const TextStyle(
-                    color: AppColors.surface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  _userProfile?['faculty'] ?? 'Faculty of Engineering and Natural Sciences',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
         actions: [
           TextButton(
             onPressed: () async {
@@ -174,31 +169,9 @@ class _HomeState extends State<Home> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Stats summary section
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              color: AppColors.backgroundColor,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _statCard(
-                      title: 'GPA',
-                      value: _currentGPA.toStringAsFixed(2),
-                      color: Colors.amber,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _statCard(
-                      title: 'Due Soon',
-                      value: '$_upcomingAssignments',
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 30), // add spacing if needed after removal
 
+            // Padding for Ongoing Program
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 25,
@@ -279,44 +252,6 @@ class _HomeState extends State<Home> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _statCard({required String title, required String value, required Color color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25), // Using withAlpha instead of withOpacity
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
       ),
     );
   }
