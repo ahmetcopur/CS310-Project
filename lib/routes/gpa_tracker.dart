@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
+import 'package:provider/provider.dart';
+import 'package:su_credit/providers/course_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GpaTrackerPage extends StatefulWidget {
   const GpaTrackerPage({super.key});
@@ -24,22 +28,187 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
     'F': 0.00,
   };
 
-  //Placeholder values
-  final List<_Course> _courses = [
-    _Course(code: 'PSY‑340', grade: 'B'),
-    _Course(code: 'CS‑310', grade: 'A-'),
-    _Course(code: 'CS‑408', grade: 'B+'),
-    _Course(code: 'CS‑307', grade: 'C'),
-    _Course(code: 'ORG‑301', grade: 'D+'),
-    _Course(code: 'SPS‑303', grade: 'C-'),
-  ];
+  // Firebase references
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
 
-  double get _gpa {
+  List<_Course> _courses = [];
+  bool _isLoading = true;
+  double _gpa = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses();
+  }
+
+  // Load courses from Firestore
+  Future<void> _loadCourses() async {
+    if (_userId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // First, try to get courses from CourseProvider (completed courses with grades)
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final gpa = await courseProvider.calculateGPA();
+
+      // Get all courses that have grades
+      final courseSnapshot = await _firestore
+          .collection('courses')
+          .where('createdBy', isEqualTo: _userId)
+          .where('isCompleted', isEqualTo: true)
+          .get();
+
+      final loadedCourses = courseSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return _Course(
+          id: doc.id,
+          code: data['code'] ?? '',
+          grade: data['letterGrade'] ?? 'N/A',
+        );
+      }).toList();
+
+      // If no courses are found, use the placeholders
+      if (loadedCourses.isEmpty) {
+        _loadPlaceholderCourses();
+      } else {
+        setState(() {
+          _courses = loadedCourses;
+          _gpa = gpa;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // On error, use default placeholder data
+      _loadPlaceholderCourses();
+    }
+  }
+
+  // Load placeholder courses if no data is available
+  void _loadPlaceholderCourses() {
+    setState(() {
+      _courses = [
+        _Course(code: 'PSY‑340', grade: 'B'),
+        _Course(code: 'CS‑310', grade: 'A-'),
+        _Course(code: 'CS‑408', grade: 'B+'),
+        _Course(code: 'CS‑307', grade: 'C'),
+        _Course(code: 'ORG‑301', grade: 'D+'),
+        _Course(code: 'SPS‑303', grade: 'C-'),
+      ];
+      _gpa = _calculateLocalGPA();
+      _isLoading = false;
+    });
+  }
+
+  // Calculate GPA locally (only used for placeholder data)
+  double _calculateLocalGPA() {
     if (_courses.isEmpty) return 0;
     final total = _courses
+        .where((c) => gradePoints.containsKey(c.grade))
         .map((c) => gradePoints[c.grade]!)
-        .reduce((a, b) => a + b);
-    return total / _courses.length;
+        .fold(0.0, (a, b) => a + b);
+    final countedCourses = _courses.where((c) => gradePoints.containsKey(c.grade)).length;
+    return countedCourses > 0 ? total / countedCourses : 0.0;
+  }
+
+  // Save a new course grade to Firestore
+  Future<void> _addCourseToFirestore(String code, String grade) async {
+    if (_userId == null) return;
+
+    try {
+      // First check if the course already exists
+      final querySnapshot = await _firestore
+          .collection('courses')
+          .where('createdBy', isEqualTo: _userId)
+          .where('code', isEqualTo: code)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Update existing course
+        final docId = querySnapshot.docs.first.id;
+        await _firestore.collection('courses').doc(docId).update({
+          'letterGrade': grade,
+          'grade': gradePoints[grade],
+          'isCompleted': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        setState(() {
+          _courses = _courses.map((c) =>
+          c.code == code ? _Course(id: c.id, code: code, grade: grade) : c
+          ).toList();
+        });
+      } else {
+        // Create a new course
+        final docRef = await _firestore.collection('courses').add({
+          'code': code,
+          'name': code, // Use code as name for simplicity
+          'credits': 3, // Default value
+          'letterGrade': grade,
+          'grade': gradePoints[grade],
+          'isCompleted': true,
+          'createdBy': _userId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'semester': 'Current', // Default value
+        });
+
+        setState(() {
+          _courses.add(_Course(id: docRef.id, code: code, grade: grade));
+        });
+      }
+
+      // Recalculate GPA
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final newGpa = await courseProvider.calculateGPA();
+      setState(() {
+        _gpa = newGpa;
+      });
+    } catch (e) {
+      // If Firebase fails, just add to local state
+      setState(() {
+        _courses.add(_Course(code: code, grade: grade));
+        _gpa = _calculateLocalGPA();
+      });
+    }
+  }
+
+  // Delete a course grade from Firestore
+  Future<void> _removeCourse(int index) async {
+    final course = _courses[index];
+
+    setState(() {
+      _courses.removeAt(index);
+      _gpa = _calculateLocalGPA(); // Update local GPA immediately for UI
+    });
+
+    if (_userId == null || course.id == null) return;
+
+    try {
+      // Delete from Firestore if it has an ID
+      await _firestore.collection('courses').doc(course.id).update({
+        'isCompleted': false,
+        'letterGrade': null,
+        'grade': null,
+      });
+
+      // Recalculate GPA
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final newGpa = await courseProvider.calculateGPA();
+      setState(() {
+        _gpa = newGpa;
+      });
+    } catch (e) {
+      // If update fails, just continue with local state update
+    }
   }
 
   Future<void> _showAddDialog() async {
@@ -75,7 +244,7 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
           ElevatedButton(
             onPressed: () {
               if (code.isNotEmpty) {
-                setState(() => _courses.add(_Course(code: code, grade: grade)));
+                _addCourseToFirestore(code, grade);
               }
               Navigator.pop(ctx);
             },
@@ -140,7 +309,9 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
                         fontSize: 18,
                       ),
                     ),
-                    Text(
+                    _isLoading
+                        ? CircularProgressIndicator(color: AppColors.surface)
+                        : Text(
                       _gpa.toStringAsFixed(2),
                       style: AppStyles.screenTitle.copyWith(
                         color: AppColors.surface,
@@ -174,22 +345,23 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
             ),
           ),
           Expanded(
-            child: ListView.separated(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
               itemCount: _courses.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, i) {
                 final c = _courses[i];
                 return Dismissible(
-                  key: ValueKey(c),
+                  key: ValueKey(c.code),
                   background: Container(
                     color: AppColors.accentRed,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 24),
                     child: const Icon(Icons.delete, color: AppColors.surface),
                   ),
-                  onDismissed: (_) =>
-                      setState(() => _courses.removeAt(i)),
+                  onDismissed: (_) => _removeCourse(i),
                   child: Container(
                     padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
@@ -226,8 +398,7 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () =>
-                              setState(() => _courses.removeAt(i)),
+                          onPressed: () => _removeCourse(i),
                           icon: const Icon(Icons.delete, color: Colors.red),
                         ),
                       ],
@@ -244,7 +415,8 @@ class _GpaTrackerPageState extends State<GpaTrackerPage> {
 }
 
 class _Course {
+  final String? id; // Firestore document ID
   final String code;
   final String grade;
-  const _Course({required this.code, required this.grade});
+  const _Course({this.id, required this.code, required this.grade});
 }

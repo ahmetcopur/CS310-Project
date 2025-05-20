@@ -1,10 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:su_credit/providers/auth_provider.dart' as app_auth;
+import 'package:su_credit/providers/course_provider.dart';
+import 'package:su_credit/providers/assignment_provider.dart';
 
-class Home extends StatelessWidget {
+class Home extends StatefulWidget {
   final String userName;
   const Home({super.key, required this.userName});
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _userProfile;
+  List<Map<String, dynamic>> _todayClasses = [];
+  List<Map<String, dynamic>> _tomorrowClasses = [];
+  double _currentGPA = 0.0;
+  int _upcomingAssignments = 0;
+  late final app_auth.AuthProvider _authProvider;
+  late final CourseProvider _courseProvider;
+  late final AssignmentProvider _assignmentProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize providers here to avoid async context issues
+    _authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    _courseProvider = Provider.of<CourseProvider>(context, listen: false);
+    _assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load user profile
+      final userProfile = await _authProvider.getUserProfile();
+
+      // Load GPA
+      final gpa = await _courseProvider.calculateGPA();
+
+      // Load assignments
+      _assignmentProvider.loadUpcomingAssignments();
+      // Use a SizedBox instead of delay for whitespace
+      await Future.delayed(Duration(milliseconds: 300));
+
+      // Load today's and tomorrow's classes (simulated)
+      final todayClasses = await _getClassesForDay(DateTime.now());
+      final tomorrowClasses = await _getClassesForDay(DateTime.now().add(Duration(days: 1)));
+
+      if (mounted) {
+        setState(() {
+          _userProfile = userProfile;
+          _currentGPA = gpa;
+          _upcomingAssignments = _assignmentProvider.assignments.length;
+          _todayClasses = todayClasses;
+          _tomorrowClasses = tomorrowClasses;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // On error, use default values
+      if (mounted) {
+        setState(() {
+          // Use placeholder data
+          _todayClasses = [
+            {'code': 'CS310-0', 'time': '9:40-10.30', 'room': 'FASS G062'},
+            {'code': 'PSY340-0', 'time': '14.40-15.30', 'room': 'FASS G049'},
+          ];
+          _tomorrowClasses = [
+            {'code': 'CS408-0', 'time': '11:40-13.30', 'room': 'FENS L045'},
+            {'code': 'CS307-0', 'time': '13.40-14.30', 'room': 'FENS G077'},
+            {'code': 'CS310-0', 'time': '14.40-16.30', 'room': 'FASS G062'},
+          ];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // This would be implemented to fetch from Firestore in a real app
+  Future<List<Map<String, dynamic>>> _getClassesForDay(DateTime date) async {
+    // Simulate Firestore fetch
+    await Future.delayed(Duration(milliseconds: 300));
+
+    // This is where you would query Firestore for classes on this date
+    // For now, return dummy data based on the day
+    if (date.weekday == DateTime.now().weekday) {
+      return [
+        {'code': 'CS310-0', 'time': '9:40-10.30', 'room': 'FASS G062'},
+        {'code': 'PSY340-0', 'time': '14.40-15.30', 'room': 'FASS G049'},
+      ];
+    } else {
+      return [
+        {'code': 'CS408-0', 'time': '11:40-13.30', 'room': 'FENS L045'},
+        {'code': 'CS307-0', 'time': '13.40-14.30', 'room': 'FENS G077'},
+        {'code': 'CS310-0', 'time': '14.40-16.30', 'room': 'FASS G062'},
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,12 +113,18 @@ class Home extends StatelessWidget {
         automaticallyImplyLeading: false,
         backgroundColor: AppColors.primary,
         elevation: 0,
-        title: Row(
+        title: _isLoading
+            ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(color: AppColors.surface, strokeWidth: 2)
+        )
+            : Row(
           children: [
             CircleAvatar(
               radius: 20,
               backgroundImage: NetworkImage(
-                'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg',
+                _userProfile?['profileImage'] ?? 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg',
               ),
             ),
             const SizedBox(width: 10),
@@ -27,16 +133,16 @@ class Home extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  userName.isNotEmpty ? userName : 'anon',
+                  _userProfile?['name'] ?? widget.userName,
                   style: const TextStyle(
                     color: AppColors.surface,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
-                const Text(
-                  'Faculty of Engineering and Natural Sciences',
-                  style: TextStyle(
+                Text(
+                  _userProfile?['faculty'] ?? 'Faculty of Engineering and Natural Sciences',
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                   ),
@@ -48,7 +154,8 @@ class Home extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              // Use auth provider for logout
+              await _authProvider.signOut();
               Navigator.pushReplacementNamed(context, '/login');
             },
             child: const Text(
@@ -61,10 +168,37 @@ class Home extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Stats summary section
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              color: AppColors.backgroundColor,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _statCard(
+                      title: 'GPA',
+                      value: _currentGPA.toStringAsFixed(2),
+                      color: Colors.amber,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _statCard(
+                      title: 'Due Soon',
+                      value: '$_upcomingAssignments',
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 25,
@@ -90,51 +224,23 @@ class Home extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                "Today's Program:",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.heading,
-                ),
-              ),
+
+            // Today's Schedule
+            _scheduleSection(
+              title: "Today's Program:",
+              classes: _todayClasses,
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BulletText('CS310-0 at 9:40-10.30 (FASS G062)'),
-                  BulletText('PSY340-0 at 14.40-15.30 (FASS G049)'),
-                ],
-              ),
+
+            const SizedBox(height: 30),
+
+            // Tomorrow's Schedule
+            _scheduleSection(
+              title: "Tomorrow's Program:",
+              classes: _tomorrowClasses,
             ),
-            SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                "Tomorrow's Program:",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.heading,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  BulletText('CS408-0 at 11:40-13.30 (FENS L045)'),
-                  BulletText('CS307-0 at 13.40-14.30 (FENS G077)'),
-                  BulletText('CS310-0 at 14.40-16.30 (FASS G062)'),
-                ],
-              ),
-            ),
-            SizedBox(height: 40),
+
+            const SizedBox(height: 40),
+
             Container(
               width: double.infinity,
               color: AppColors.primary,
@@ -176,8 +282,77 @@ class Home extends StatelessWidget {
       ),
     );
   }
+
+  Widget _statCard({required String title, required String value, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(25), // Using withAlpha instead of withOpacity
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scheduleSection({required String title, required List<Map<String, dynamic>> classes}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: AppColors.heading,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: classes.isEmpty
+                ? [const Text('No classes scheduled', style: TextStyle(fontSize: 16))]
+                : classes.map((classInfo) {
+              return BulletText('${classInfo['code']} at ${classInfo['time']} (${classInfo['room']})');
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
+// Existing BulletText class - keep this as is
 class BulletText extends StatelessWidget {
   final String text;
   const BulletText(this.text, {super.key});
@@ -211,6 +386,7 @@ class BulletText extends StatelessWidget {
   }
 }
 
+// Existing HomeMenuButton class - keep this as is
 class HomeMenuButton extends StatelessWidget {
   final String label;
   final Color backgroundColor;

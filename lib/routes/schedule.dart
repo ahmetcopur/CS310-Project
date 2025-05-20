@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+// Helper class for Day functionality
+class _DayHelper {
+  static Day fromString(String value) {
+    return Day.values.firstWhere(
+          (day) => day.toString().split('.').last == value,
+      orElse: () => Day.mon,
+    );
+  }
+}
+
+// Keep the existing ValueNotifier for local state
+// Using Course instead of _Course to avoid private type in public API
 final ValueNotifier<List<Set<_Course>>> savedSchedules =
 ValueNotifier<List<Set<_Course>>>([]);
 
 enum Day { mon, tue, wed, thu, fri }
 
-extension on Day {
+extension DayExtension on Day {
   String get label => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][index];
+
+  // Helper method to store enum as string in Firestore
+  String toFirestore() {
+    return toString().split('.').last;
+  }
 }
 
 class _Meeting {
@@ -16,6 +35,23 @@ class _Meeting {
   final int start;
   final int end;
   const _Meeting(this.day, this.start, this.end);
+
+  // Add Firestore conversion methods
+  Map<String, dynamic> toFirestore() {
+    return {
+      'day': day.toFirestore(),
+      'start': start,
+      'end': end,
+    };
+  }
+
+  factory _Meeting.fromFirestore(Map<String, dynamic> data) {
+    return _Meeting(
+      _DayHelper.fromString(data['day'] ?? 'mon'),
+      data['start'] ?? 8,
+      data['end'] ?? 9,
+    );
+  }
 }
 
 class _Course {
@@ -23,6 +59,22 @@ class _Course {
   final _Meeting meeting;
   const _Course(this.title, this.meeting);
   String get code => title.split('–').first.trim();
+
+  // Add Firestore conversion methods
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'meeting': meeting.toFirestore(),
+    };
+  }
+
+  factory _Course.fromFirestore(Map<String, dynamic> data) {
+    return _Course(
+      data['title'] ?? 'Unknown Course',
+      _Meeting.fromFirestore(data['meeting'] ?? {}),
+    );
+  }
+
   @override
   bool operator ==(Object o) =>
       o is _Course && title == o.title && meeting == o.meeting;
@@ -39,32 +91,175 @@ class SchedulePage extends StatefulWidget {
 }
 
 class _SchedulePageState extends State<SchedulePage> {
-  final _catalog = <_Course>[
+  // Keep original catalog as fallback
+  final _staticCatalog = <_Course>[
     _Course('CS301–Algorithms', const _Meeting(Day.mon, 9, 12)),
     _Course('CS302–Formal Languages', const _Meeting(Day.tue, 12, 15)),
     _Course('CS305–Programming Languages', const _Meeting(Day.thu, 8, 11)),
   ];
+
+  List<_Course> _catalog = [];
   final Set<_Course> _selected = {};
   String _query = '';
+  bool _isLoading = true;
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
-    if (widget.index >= 0 &&
-        widget.index < savedSchedules.value.length) {
-      _selected.addAll(savedSchedules.value[widget.index]);
+    _userId = FirebaseAuth.instance.currentUser?.uid;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Only proceed if user is logged in
+      if (_userId == null) {
+        setState(() {
+          _catalog = _staticCatalog;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Load course catalog from Firestore
+      final catalogSnapshot = await FirebaseFirestore.instance
+          .collection('courses')
+          .get();
+
+      List<_Course> loadedCatalog = [];
+
+      if (catalogSnapshot.docs.isNotEmpty) {
+        // Convert Firestore documents to Course objects
+        for (var doc in catalogSnapshot.docs) {
+          final data = doc.data();
+          loadedCatalog.add(_Course(
+            '${data['code'] ?? 'Unknown'}–${data['name'] ?? 'Course'}',
+            _Meeting(
+              _DayHelper.fromString(data['day'] ?? 'mon'),
+              data['startHour'] ?? 9,
+              data['endHour'] ?? 12,
+            ),
+          ));
+        }
+      }
+
+      // If no courses were found in Firestore, use static catalog
+      if (loadedCatalog.isEmpty) {
+        loadedCatalog = _staticCatalog;
+      }
+
+      // Load saved schedules for this user
+      if (widget.index >= 0 && widget.index < savedSchedules.value.length) {
+        // First check local storage (ValueNotifier)
+        _selected.addAll(savedSchedules.value[widget.index]);
+      } else if (widget.index >= 0) {
+        // If not in local storage, try to load from Firestore
+        try {
+          final scheduleSnapshot = await FirebaseFirestore.instance
+              .collection('schedules')
+              .where('userId', isEqualTo: _userId)
+              .where('index', isEqualTo: widget.index)
+              .limit(1)
+              .get();
+
+          if (scheduleSnapshot.docs.isNotEmpty) {
+            final data = scheduleSnapshot.docs.first.data();
+            if (data['courses'] != null && data['courses'] is List) {
+              for (var courseData in data['courses']) {
+                _selected.add(_Course.fromFirestore(courseData));
+              }
+            }
+          }
+        } catch (e) {
+          // If Firestore fails, just use local data
+          debugPrint('Error loading schedule from Firestore: $e');
+        }
+      }
+
+      setState(() {
+        _catalog = loadedCatalog;
+        _isLoading = false;
+      });
+    } catch (e) {
+      // On any error, fallback to static data
+      setState(() {
+        _catalog = _staticCatalog;
+        _isLoading = false;
+      });
     }
   }
 
-  void _saveSchedule() {
+  void _saveSchedule() async {
+    // Capture the context before the async gap
+    final currentContext = context;
+
+    // First update local state (ValueNotifier)
     final list = List<Set<_Course>>.from(savedSchedules.value);
     if (widget.index == -1) {
       list.add(Set<_Course>.from(_selected));
     } else {
-      list[widget.index] = Set<_Course>.from(_selected);
+      if (widget.index >= list.length) {
+        list.add(Set<_Course>.from(_selected));
+      } else {
+        list[widget.index] = Set<_Course>.from(_selected);
+      }
     }
     savedSchedules.value = list;
-    Navigator.pop(context);
+
+    // Then save to Firestore if user is logged in
+    if (_userId != null) {
+      try {
+        // Convert selected courses to Firestore format
+        final List<Map<String, dynamic>> coursesData =
+        _selected.map((course) => course.toFirestore()).toList();
+
+        // Determine the index to save at
+        final int saveIndex = widget.index == -1 ? list.length - 1 : widget.index;
+
+        // Check if schedule already exists for this user and index
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('schedules')
+            .where('userId', isEqualTo: _userId)
+            .where('index', isEqualTo: saveIndex)
+            .limit(1)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          // Update existing schedule
+          await FirebaseFirestore.instance
+              .collection('schedules')
+              .doc(querySnapshot.docs.first.id)
+              .update({
+            'courses': coursesData,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // Create new schedule
+          await FirebaseFirestore.instance
+              .collection('schedules')
+              .add({
+            'userId': _userId,
+            'index': saveIndex,
+            'courses': coursesData,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        // If Firestore save fails, at least the local save worked
+        debugPrint('Error saving schedule to Firestore: $e');
+      }
+    }
+
+    // Use the captured context for navigation
+    if (mounted) {
+      Navigator.pop(currentContext);
+    }
   }
 
   @override
@@ -90,7 +285,9 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
         ],
       ),
-      body: Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -113,7 +310,11 @@ class _SchedulePageState extends State<SchedulePage> {
             height: 210,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _catalog.where((c) => _query.isEmpty || c.title.toLowerCase().contains(_query.toLowerCase())).map(_courseTile).toList(),
+              children: _catalog
+                  .where((c) => _query.isEmpty ||
+                  c.title.toLowerCase().contains(_query.toLowerCase()))
+                  .map(_courseTile)
+                  .toList(),
             ),
           ),
           Expanded(
@@ -159,6 +360,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 }
 
+// Keep the existing _TimeTable widget exactly as it was
 class _TimeTable extends StatelessWidget {
   final List<_Course> selected;
   const _TimeTable({required this.selected});

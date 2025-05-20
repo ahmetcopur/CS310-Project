@@ -2,47 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:su_credit/utils/dimensions.dart';
-
-class _CourseData {
-  final String info;
-  final String requirements;
-  final String description;
-  const _CourseData({
-    required this.info,
-    required this.requirements,
-    required this.description,
-  });
-}
-
-const Map<String, _CourseData> _courseData = {
-  'CS301': _CourseData(
-    info: '''
-CS301 – Algorithms
-Credits: 3.000
-Campus: Sabanci University
-Lecture Type: In‑person''',
-    requirements: '''
-Undergraduate only
-Corequisite: CS301R
-Prerequisites: MATH204 (Min.Grade:D)
-& CS300        (Min.Grade:D)''',
-    description: '''
-This course is about the analysis and design of computer algorithms. We will study various methods to analyze the correctness and asymptotic performance of algorithms, important algorithms (e.g., search, sort, path finding, spanning tree, network flow) and data structures (e.g., dynamic sets, augmented data structures), algorithmic design paradigms (e.g., randomized, divide‑and‑conquer, dynamic programming, greedy, incremental), and hardness of problems (e.g., NP‑completeness, reductions, approximation algorithms).''',
-  ),
-  'CS302': _CourseData(
-    info: '''
-CS302 - Formal Languages and Automata
-Credits: 3.000
-Campus: Sabanci University
-Lecture Type: Interactive,Learner centered,Communicative''',
-    requirements: '''
-Undergraduate only
-Corequisite: CS302R
-Prerequisites: --''',
-    description: '''
-This course introduces the mathematical foundations of computer languages and computation. You’ll study the Chomsky hierarchy of grammars, regular languages and expressions, and both deterministic and nondeterministic finite automata (including determinization and minimization). You’ll learn the pumping lemmas and closure properties for regular and context‑free languages, explore context‑free grammars and push‑down automata, and get an introductory look at Turing machines. Throughout, you’ll examine the algorithms and complexity bounds for key decision problems in language theory.''',
-  ),
-};
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final String courseName;
@@ -55,19 +16,44 @@ class CourseDetailPage extends StatefulWidget {
 class _CourseDetailPageState extends State<CourseDetailPage> {
   int _selectedRating = 0;
   final _ctrl = TextEditingController();
-  final List<_Comment> _comments = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  late final String _courseId;
 
-  void _addComment() {
+  @override
+  void initState() {
+    super.initState();
+    _courseId = widget.courseName.split(' ').first;
+  }
+
+  // Add a comment to Firestore
+  void _addComment() async {
     final text = _ctrl.text.trim();
-    if (text.isEmpty || _selectedRating == 0) return;
-    setState(() {
-      _comments.insert(
-        0,
-        _Comment(text: text, rating: _selectedRating, date: DateTime.now()),
+    if (text.isEmpty || _selectedRating == 0 || _currentUserId == null) return;
+
+    try {
+      final commentData = {
+        'courseId': _courseId,
+        'text': text,
+        'rating': _selectedRating,
+        'date': FieldValue.serverTimestamp(),
+        'userId': _currentUserId,
+      };
+
+      // Add to Firestore - will automatically update UI via Stream
+      await _firestore.collection('courseComments').add(commentData);
+
+      // Clear input fields
+      setState(() {
+        _ctrl.clear();
+        _selectedRating = 0;
+      });
+    } catch (e) {
+      // Show error using snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding comment: ${e.toString()}')),
       );
-      _ctrl.clear();
-      _selectedRating = 0;
-    });
+    }
   }
 
   @override
@@ -78,15 +64,6 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final String key = widget.courseName.split(' ').first;
-
-    final _CourseData data = _courseData[key] ??
-        const _CourseData(
-          info: 'TBD',
-          requirements: 'TBD',
-          description: 'TBD',
-        );
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -103,30 +80,85 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Info & Requirements
-            Row(
-              children: [
-                Expanded(child: _whiteBox(data.info, 'Course Info')),
-                const SizedBox(width: 12),
-                Expanded(child: _whiteBox(data.requirements, 'Requirements')),
-              ],
+            // Course Info from Firestore using real-time listener
+            StreamBuilder<DocumentSnapshot>(
+                stream: _firestore.collection('courses').doc(_courseId).snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading course: ${snapshot.error}',
+                        style: AppStyles.bodyText,
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                    return Center(
+                      child: Text(
+                        'Course not found',
+                        style: AppStyles.bodyText,
+                      ),
+                    );
+                  }
+
+                  // Extract course data
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+
+                  // Format course info
+                  final String code = data['code'] ?? 'Unknown';
+                  final String name = data['name'] ?? 'Unknown Course';
+                  final int credits = data['credits'] ?? 0;
+                  final String instructor = data['instructor'] ?? 'Not specified';
+                  final String semester = data['semester'] ?? 'Not specified';
+                  final String description = data['description'] ?? 'No description available';
+
+                  // Format information for display
+                  final String info = '''
+$code – $name
+Credits: $credits.000
+Campus: Sabanci University
+Lecture Type: In‑person''';
+
+                  final String requirements = '''
+Undergraduate only
+Instructor: $instructor
+Prerequisites: $semester''';
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: _whiteBox(info, 'Course Info')),
+                          const SizedBox(width: 12),
+                          Expanded(child: _whiteBox(requirements, 'Requirements')),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text('Description',
+                          style: AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
+                      const SizedBox(height: 8),
+                      _whiteBox(description),
+                    ],
+                  );
+                }
             ),
-            const SizedBox(height: 24),
-            Text('Description',
-                style:
-                AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
-            const SizedBox(height: 8),
-            _whiteBox(data.description),
+
             const SizedBox(height: 24),
             Text('Comments',
-                style:
-                AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
+                style: AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
             const SizedBox(height: 8),
+
+            // Comment input area
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius:
-                BorderRadius.circular(AppDimensions.borderRadiusSmall),
+                borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
               ),
               padding: EdgeInsets.all(AppDimensions.paddingMedium),
               child: Column(
@@ -138,13 +170,10 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                       return IconButton(
                         padding: EdgeInsets.zero,
                         icon: Icon(
-                          _selectedRating >= star
-                              ? Icons.star
-                              : Icons.star_border,
+                          _selectedRating >= star ? Icons.star : Icons.star_border,
                           color: AppColors.accentOrange,
                         ),
-                        onPressed: () =>
-                            setState(() => _selectedRating = star),
+                        onPressed: () => setState(() => _selectedRating = star),
                       );
                     }),
                   ),
@@ -169,8 +198,52 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
-            for (final c in _comments) _commentTile(c),
+
+            // Comments from Firestore using real-time listener
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('courseComments')
+                  .where('courseId', isEqualTo: _courseId)
+                  .orderBy('date', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading comments: ${snapshot.error}',
+                      style: AppStyles.bodyTextSecondary,
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text('No comments yet', style: AppStyles.bodyTextSecondary),
+                  );
+                }
+
+                // Convert snapshot to comments
+                final comments = snapshot.data!.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return _Comment(
+                    id: doc.id,
+                    text: data['text'] ?? '',
+                    rating: data['rating'] ?? 0,
+                    date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                  );
+                }).toList();
+
+                return Column(
+                  children: comments.map((c) => _commentTile(c)).toList(),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -182,15 +255,13 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     children: [
       if (header != null)
         Text(header,
-            style:
-            AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
+            style: AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
       if (header != null) const SizedBox(height: 6),
       Container(
         width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius:
-          BorderRadius.circular(AppDimensions.borderRadiusMedium),
+          borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMedium),
         ),
         padding: EdgeInsets.all(AppDimensions.paddingMedium),
         child: Text(text, style: AppStyles.bodyText),
@@ -201,8 +272,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   Widget _commentTile(_Comment c) => Container(
     decoration: BoxDecoration(
       color: AppColors.surface,
-      borderRadius:
-      BorderRadius.circular(AppDimensions.borderRadiusSmall),
+      borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
     ),
     margin: EdgeInsets.only(bottom: AppDimensions.paddingMedium),
     padding: EdgeInsets.all(AppDimensions.paddingMedium),
@@ -230,8 +300,9 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
 }
 
 class _Comment {
+  final String? id;
   final String text;
   final int rating;
   final DateTime date;
-  _Comment({required this.text, required this.rating, required this.date});
+  _Comment({this.id, required this.text, required this.rating, required this.date});
 }

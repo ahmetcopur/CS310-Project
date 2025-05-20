@@ -31,6 +31,9 @@ dependencies:
   fl_chart: ^0.66.1
   flutter:
     sdk: flutter
+  provider: ^6.0.5
+  intl: ^0.18.0
+  cloud_firestore: ^5.6.7
   email_validator: ^2.0.1  # (check for the latest version)
 
   # The following adds the Cupertino Icons font to your application.

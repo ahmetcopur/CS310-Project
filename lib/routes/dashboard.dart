@@ -1,9 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
+import 'package:provider/provider.dart';
+import 'package:su_credit/providers/course_provider.dart';
+import 'package:su_credit/providers/assignment_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class StudentDashboard extends StatelessWidget {
+class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
+
+  @override
+  State<StudentDashboard> createState() => _StudentDashboardState();
+}
+
+class _StudentDashboardState extends State<StudentDashboard> {
+  double _currentGPA = 0;
+  List<Map<String, dynamic>> _examAssignments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+    final assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
+
+    try {
+      // Load GPA from Firestore
+      final gpa = await courseProvider.calculateGPA();
+
+      // Load upcoming assignments without awaiting (it's a void method)
+      assignmentProvider.loadUpcomingAssignments();
+
+      // Give it a moment to load
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Get the assignments after they've loaded
+      final assignments = assignmentProvider.assignments;
+
+      // Create formatted list for UI
+      final formattedAssignments = assignments.map((assignment) {
+        final daysUntilDue = assignment.dueDate.difference(DateTime.now()).inDays;
+        final color = daysUntilDue <= 7 ? Colors.lightBlue : Colors.pinkAccent;
+        final title = '${assignment.courseId} - ${assignment.title} in $daysUntilDue days!';
+
+        return {
+          'title': title,
+          'color': color,
+        };
+      }).toList();
+
+      // Only update if widget is still mounted
+      if (mounted) {
+        setState(() {
+          _currentGPA = gpa;
+          _examAssignments = formattedAssignments;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // On error, use default values
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +79,9 @@ class StudentDashboard extends StatelessWidget {
         children: [
           _DashboardHeader(title: 'Student Dashboard'),
           Expanded(
-            child: SingleChildScrollView(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,10 +139,10 @@ class StudentDashboard extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        _GpaStatusCard(currentGpa: 1.95),
-                        SizedBox(width: 16),
-                        Expanded(child: _WarningsCard()),
+                      children: [
+                        _GpaStatusCard(currentGpa: _currentGPA),
+                        const SizedBox(width: 16),
+                        const Expanded(child: _WarningsCard()),
                       ],
                     ),
                   ),
@@ -84,7 +152,7 @@ class StudentDashboard extends StatelessWidget {
                     buttonLabel: 'See More',
                     onPressed: () => Navigator.pushNamed(context, '/assignments'),
                   ),
-                  const _ExamList(),
+                  _ExamList(examAssignments: _examAssignments),
                 ],
               ),
             ),
@@ -355,17 +423,24 @@ class _WarningsCard extends StatelessWidget {
 }
 
 class _ExamList extends StatelessWidget {
-  const _ExamList();
+  final List<Map<String, dynamic>> examAssignments;
+
+  const _ExamList({
+    this.examAssignments = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    const exams = [
-      ('CS 310 - Project Phase 2 Submission in 5 days!', Colors.lightBlue),
-      ('CS 307 - Midterm Exam in 7 days!', Colors.lightBlue),
-      ('CS 403 - Midterm Exam in 10 days!', Colors.lightBlue),
-      ('CS 305 - Homework 2 Submission in 12 days!', Colors.pinkAccent),
-      ('Math 306 - Midterm Exam in 15 days!', Colors.pinkAccent),
-    ];
+    // If no Firestore data, use hardcoded data
+    final displayAssignments = examAssignments.isEmpty
+        ? [
+      {'title': 'CS 310 - Project Phase 2 Submission in 5 days!', 'color': Colors.lightBlue},
+      {'title': 'CS 307 - Midterm Exam in 7 days!', 'color': Colors.lightBlue},
+      {'title': 'CS 403 - Midterm Exam in 10 days!', 'color': Colors.lightBlue},
+      {'title': 'CS 305 - Homework 2 Submission in 12 days!', 'color': Colors.pinkAccent},
+      {'title': 'Math 306 - Midterm Exam in 15 days!', 'color': Colors.pinkAccent},
+    ]
+        : examAssignments;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -376,7 +451,7 @@ class _ExamList extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Column(
-          children: exams.map((e) =>
+          children: displayAssignments.map((e) =>
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
@@ -386,9 +461,9 @@ class _ExamList extends StatelessWidget {
                         style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                     Expanded(
                       child: Text(
-                        e.$1,
+                        e['title'],
                         style: AppStyles.bodyText.copyWith(
-                          color: e.$2,
+                          color: e['color'],
                           fontWeight: FontWeight.w700,
                         ),
                       ),

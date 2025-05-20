@@ -3,23 +3,97 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/dimensions.dart';
 import 'package:su_credit/utils/styles.dart';
+import 'package:provider/provider.dart';
+import 'package:su_credit/providers/course_provider.dart';
 
-class GraduationProgressPage extends StatelessWidget {
+class GraduationProgressPage extends StatefulWidget {
   const GraduationProgressPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const requiredTotal = 125;
-    const earned = 75;
-    const minJunior = 64;
-    const maxSenior = 94;
+  State<GraduationProgressPage> createState() => _GraduationProgressPageState();
+}
 
+class _GraduationProgressPageState extends State<GraduationProgressPage> {
+  bool _isLoading = true;
+
+  // Credit values - will be updated from Firebase
+  int _requiredTotal = 125;
+  int _earned = 75;
+  int _minJunior = 64;
+  int _maxSenior = 94;
+
+  // Credit distribution
+  int _coreCredits = 50;
+  int _areaCredits = 15;
+  int _freeCredits = 15;
+  int _requiredCredits = 20;
+  int _remainingCredits = 25;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourseData();
+  }
+
+  Future<void> _loadCourseData() async {
+    try {
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      courseProvider.loadUserCourses();
+
+      final courses = courseProvider.courses;
+
+      if (courses.isNotEmpty) {
+        // Calculate total earned credits
+        final totalEarned = courseProvider.totalCredits;
+
+        // For simplicity, we'll calculate these as percentages of total
+        final completedCredits = courseProvider.completedCredits;
+
+        // Estimate different credit types (in a real app, you'd have proper categorization)
+        // These are just estimates based on the total credits
+        final coreCredits = (totalEarned * 0.5).round(); // 50% of earned credits
+        final areaCredits = (totalEarned * 0.2).round(); // 20% of earned credits
+        final freeCredits = (totalEarned * 0.15).round(); // 15% of earned credits
+        final requiredCredits = (totalEarned * 0.15).round(); // 15% of earned credits
+        final remainingCredits = _requiredTotal - totalEarned;
+
+        if (mounted) {
+          setState(() {
+            _earned = totalEarned;
+            _coreCredits = coreCredits;
+            _areaCredits = areaCredits;
+            _freeCredits = freeCredits;
+            _requiredCredits = requiredCredits;
+            _remainingCredits = remainingCredits;
+            _isLoading = false;
+          });
+        }
+      } else {
+        // If no courses found, use default values
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      // On error, use default values
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pieSections = [
-      PieChartSectionData(value: 50, color: AppColors.accentOrange, title: ''),
-      PieChartSectionData(value: 20, color: AppColors.accentTeal, title: ''),
-      PieChartSectionData(value: 15, color: AppColors.accentBlue, title: ''),
-      PieChartSectionData(value: 15, color: AppColors.accentPink, title: ''),
-      PieChartSectionData(value: 25, color: AppColors.backgroundColor, title: ''),
+      PieChartSectionData(value: _coreCredits.toDouble(), color: AppColors.accentOrange, title: ''),
+      PieChartSectionData(value: _areaCredits.toDouble(), color: AppColors.accentTeal, title: ''),
+      PieChartSectionData(value: _freeCredits.toDouble(), color: AppColors.accentBlue, title: ''),
+      PieChartSectionData(value: _requiredCredits.toDouble(), color: AppColors.accentPink, title: ''),
+      PieChartSectionData(value: _remainingCredits.toDouble(), color: AppColors.backgroundColor, title: ''),
     ];
 
     return Scaffold(
@@ -28,12 +102,14 @@ class GraduationProgressPage extends StatelessWidget {
         backgroundColor: AppColors.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.surface),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () { Navigator.pop(context); },
         ),
         title: Text('Graduation Progress',
             style: AppStyles.screenTitle.copyWith(color: AppColors.surface)),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: AppDimensions.regularParentPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +136,7 @@ class GraduationProgressPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '$earned/$requiredTotal SU\nCredits Earned',
+                        '$_earned/$_requiredTotal SU\nCredits Earned',
                         textAlign: TextAlign.center,
                         style: AppStyles.bodyText.copyWith(
                             color: AppColors.surface,
@@ -90,9 +166,9 @@ class GraduationProgressPage extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      _circle('$minJunior', size: 56, textSize: 18),
+                      _circle('$_minJunior', size: 56, textSize: 18),
                       Expanded(child: Container(height: 5, color: AppColors.surface)),
-                      _circle('$maxSenior', size: 56, textSize: 18),
+                      _circle('$_maxSenior', size: 56, textSize: 18),
                     ],
                   ),
                   SizedBox(
@@ -101,15 +177,15 @@ class GraduationProgressPage extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         Positioned(
-                          left: ((earned - minJunior) /
-                              (maxSenior - minJunior))
+                          left: ((_earned - _minJunior) /
+                              (_maxSenior - _minJunior))
                               .clamp(0, 1) *
-                              MediaQuery.of(context).size.width,
+                              (MediaQuery.of(context).size.width - 64),
                           child: Column(
                             children: [
                               const Icon(Icons.arrow_drop_up,
                                   size: 40, color: Colors.redAccent),
-                              Text('$earned',
+                              Text('$_earned',
                                   style: AppStyles.bodyText.copyWith(
                                       color: AppColors.surface,
                                       fontSize: 18,
@@ -159,9 +235,9 @@ class GraduationProgressPage extends StatelessWidget {
                   AppDimensions.verticalSpace(AppDimensions.paddingSmall),
                   _bullet('CS 301, CS 395, ENS 491, ENS 492',
                       AppColors.accentOrange),
-                  _bullet('More Core Credits', AppColors.accentTeal),
-                  _bullet('More Area Credits', AppColors.secondary),
-                  _bullet('More Free Credits', AppColors.accentPink),
+                  _bullet('${_requiredTotal - _coreCredits - _earned} more Core Credits', AppColors.accentTeal),
+                  _bullet('${(_requiredTotal * 0.2).round() - _areaCredits} more Area Credits', AppColors.secondary),
+                  _bullet('${(_requiredTotal * 0.15).round() - _freeCredits} more Free Credits', AppColors.accentPink),
                 ],
               ),
             ),

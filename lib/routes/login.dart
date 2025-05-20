@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/routes/home.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:su_credit/providers/auth_provider.dart' as app_auth;
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -15,9 +16,9 @@ class Login extends StatefulWidget {
 
 class _LoginState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
-  String email = ''; 
+  String email = '';
   String password = '';
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
 
   Future<void> _showDialog(String title, String message) async {
     bool isAndroid = Platform.isAndroid;
@@ -51,33 +52,40 @@ class _LoginState extends State<Login> {
     );
   }
 
-  void _login() async { // Made async
+  void _login() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
-        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        print('User logged in: ${userCredential.user!.uid}');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => Home(userName: email), // Passing email as userName
-          ),
-        );
-      } on FirebaseAuthException catch (e) {
-        String errorMessage;
-        if (e.code == 'user-not-found') {
-          errorMessage = 'No user found for that email.';
-        } else if (e.code == 'wrong-password') {
-          errorMessage = 'Wrong password provided for that user.';
-        } else {
-          errorMessage = 'An error occurred. Please try again.';
+        // Use AuthProvider instead of direct FirebaseAuth
+        final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+        await authProvider.signIn(email, password);
+
+        // Only navigate if still mounted (no errors occurred)
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Home(userName: email), // Passing email as userName
+            ),
+          );
         }
-        _showDialog('Login Error', errorMessage);
       } catch (e) {
-        _showDialog('Login Error', 'An unexpected error occurred. Please try again.');
+        // Show error dialog
+        if (mounted) {
+          _showDialog('Login Error', e.toString());
+        }
+      } finally {
+        // Reset loading state if still mounted
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -129,10 +137,10 @@ class _LoginState extends State<Login> {
                         child: TextFormField(
                           decoration: InputDecoration(
                             prefixIcon: Icon(
-                              Icons.email, // Changed from Icons.person to Icons.email
+                              Icons.email,
                               color: AppColors.primary,
                             ),
-                            labelText: 'Email', // Changed from SU-Net Username to Email
+                            labelText: 'Email',
                             labelStyle: AppStyles.bodyText.copyWith(
                               color: AppColors.primary,
                             ),
@@ -152,14 +160,14 @@ class _LoginState extends State<Login> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Email is required'; // Changed from Username to Email
+                              return 'Email is required';
                             }
-                            if (!value.contains('@')) { // Basic email validation
+                            if (!value.contains('@')) {
                               return 'Please enter a valid email';
                             }
                             return null;
                           },
-                          onSaved: (value) => email = value ?? '', // Changed from username to email
+                          onSaved: (value) => email = value ?? '',
                         ),
                       ),
                       Padding(
@@ -171,7 +179,7 @@ class _LoginState extends State<Login> {
                               Icons.lock,
                               color: AppColors.primary,
                             ),
-                            labelText: 'Password', // Changed from SU-Net Password to Password
+                            labelText: 'Password',
                             labelStyle: AppStyles.bodyText.copyWith(
                               color: AppColors.primary,
                             ),
@@ -192,7 +200,7 @@ class _LoginState extends State<Login> {
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Password is required';
-                            } else if (value.length < 6) { // Firebase default minimum is 6
+                            } else if (value.length < 6) {
                               return 'Password must be at least 6 characters';
                             }
                             return null;
@@ -205,14 +213,23 @@ class _LoginState extends State<Login> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: _login,
+                          onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: Text(
+                          child: _isLoading
+                              ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: AppColors.surface,
+                              strokeWidth: 2,
+                            ),
+                          )
+                              : Text(
                             'Login',
                             style: AppStyles.buttonText.copyWith(
                               fontSize: 18,
@@ -223,7 +240,7 @@ class _LoginState extends State<Login> {
                       ),
                       const SizedBox(height: 10),
                       TextButton(
-                        onPressed: () {
+                        onPressed: _isLoading ? null : () {
                           Navigator.pushNamed(context, '/register');
                         },
                         child: Text(
@@ -234,7 +251,7 @@ class _LoginState extends State<Login> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20), // Added SizedBox for spacing
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
