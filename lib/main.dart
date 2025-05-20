@@ -14,9 +14,6 @@ import 'firebase_options.dart';
 import 'package:su_credit/routes/register.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// Fix provider import path
-import 'package:su_credit/providers/course_provider.dart';
-// Import providers with aliasing to avoid conflicts
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
 import 'package:su_credit/providers/course_provider.dart';
 import 'package:su_credit/providers/assignment_provider.dart';

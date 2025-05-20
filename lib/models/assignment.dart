@@ -6,7 +6,6 @@ class Assignment {
   final String title;
   final String description;
   final DateTime dueDate;
-  final bool isCompleted;
   final double? score;
   final double? maxScore;
   final String createdBy;
@@ -18,7 +17,6 @@ class Assignment {
     required this.title,
     required this.description,
     required this.dueDate,
-    this.isCompleted = false,
     this.score,
     this.maxScore,
     required this.createdBy,
@@ -35,7 +33,6 @@ class Assignment {
       dueDate: data['dueDate'] != null
           ? (data['dueDate'] as Timestamp).toDate()
           : DateTime.now(),
-      isCompleted: data['isCompleted'] ?? false,
       score: data['score']?.toDouble(),
       maxScore: data['maxScore']?.toDouble(),
       createdBy: data['createdBy'] ?? '',
@@ -56,7 +53,6 @@ class Assignment {
       dueDate: data['dueDate'] != null
           ? (data['dueDate'] as Timestamp).toDate()
           : DateTime.now(),
-      isCompleted: data['isCompleted'] ?? false,
       score: data['score']?.toDouble(),
       maxScore: data['maxScore']?.toDouble(),
       createdBy: data['createdBy'] ?? '',
@@ -73,7 +69,6 @@ class Assignment {
       'title': title,
       'description': description,
       'dueDate': Timestamp.fromDate(dueDate),
-      'isCompleted': isCompleted,
       'score': score,
       'maxScore': maxScore,
       'createdBy': createdBy,
@@ -91,7 +86,6 @@ class Assignment {
     String? title,
     String? description,
     DateTime? dueDate,
-    bool? isCompleted,
     double? score,
     double? maxScore,
   }) {
@@ -101,7 +95,6 @@ class Assignment {
       title: title ?? this.title,
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
-      isCompleted: isCompleted ?? this.isCompleted,
       score: score ?? this.score,
       maxScore: maxScore ?? this.maxScore,
       createdBy: this.createdBy,

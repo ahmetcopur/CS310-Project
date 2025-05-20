@@ -125,7 +125,6 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                   final String name = data['name'] ?? 'Unknown Course';
                   final int credits = data['credits'] ?? 0;
                   final String instructor = data['instructor'] ?? 'Not specified';
-                  final String semester = data['semester'] ?? 'Not specified';
                   final String description = data['description'] ?? 'No description available';
 
                   // Format information for display
@@ -135,10 +134,14 @@ Credits: $credits.000
 Campus: Sabanci University
 Lecture Type: In‑person''';
 
+                  // Build requirements info from Firestore
+                  final List<dynamic> reqList = data['requirements'] ?? [];
+                  final String prerequisites = reqList.isNotEmpty
+                      ? reqList.map((e) => e.toString()).join(', ')
+                      : 'None';
                   final String requirements = '''
-Undergraduate only
 Instructor: $instructor
-Prerequisites: $semester''';
+Prerequisites: $prerequisites''';
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

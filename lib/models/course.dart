@@ -59,6 +59,8 @@ class Course {
 
   // List of sessions instead of single day/time
   final List<CourseSession> sessions;
+  // List of prerequisite course codes
+  final List<String> requirements;
 
   Course({
     required this.id,
@@ -73,6 +75,7 @@ class Course {
     this.letterGrade,
     this.isCompleted = false,
     this.sessions = const [],
+    this.requirements = const [],
   });
 
   // For FirestoreService
@@ -82,6 +85,13 @@ class Course {
     if (data['sessions'] != null && data['sessions'] is List) {
       sessions = (data['sessions'] as List)
           .map((sessionData) => CourseSession.fromMap(sessionData))
+          .toList();
+    }
+    // Parse prerequisites from List to List<String>
+    List<String> requirements = [];
+    if (data['requirements'] != null && data['requirements'] is List) {
+      requirements = (data['requirements'] as List)
+          .map((e) => e.toString())
           .toList();
     }
 
@@ -100,6 +110,7 @@ class Course {
       letterGrade: data['letterGrade'],
       isCompleted: data['isCompleted'] ?? false,
       sessions: sessions,
+      requirements: requirements,
     );
   }
 
@@ -112,6 +123,13 @@ class Course {
     if (data['sessions'] != null && data['sessions'] is List) {
       sessions = (data['sessions'] as List)
           .map((sessionData) => CourseSession.fromMap(sessionData))
+          .toList();
+    }
+    // Parse prerequisites from List to List<String>
+    List<String> requirements = [];
+    if (data['requirements'] != null && data['requirements'] is List) {
+      requirements = (data['requirements'] as List)
+          .map((e) => e.toString())
           .toList();
     }
 
@@ -130,6 +148,7 @@ class Course {
       letterGrade: data['letterGrade'],
       isCompleted: data['isCompleted'] ?? false,
       sessions: sessions,
+      requirements: requirements,
     );
   }
 
@@ -147,6 +166,7 @@ class Course {
       'letterGrade': letterGrade,
       'isCompleted': isCompleted,
       'sessions': sessions.map((session) => session.toMap()).toList(),
+      'requirements': requirements,
     };
   }
 
@@ -166,6 +186,7 @@ class Course {
     String? letterGrade,
     bool? isCompleted,
     List<CourseSession>? sessions,
+    List<String>? requirements,
   }) {
     return Course(
       id: this.id,
@@ -180,6 +201,7 @@ class Course {
       letterGrade: letterGrade ?? this.letterGrade,
       isCompleted: isCompleted ?? this.isCompleted,
       sessions: sessions ?? this.sessions,
+      requirements: requirements ?? this.requirements,
     );
   }
 

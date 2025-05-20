@@ -19,6 +19,9 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
   bool _isLoading = true;
   String? _userId;
 
+  // Add sorting state variable
+  bool _isAscending = true;
+
   // Keep original list as fallback
   final List<String> _staticCourses = [
     'CS301 - Algorithms',
@@ -138,6 +141,18 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
     }
   }
 
+  // Method to toggle sort order and sort the course list
+  void _toggleSort() {
+    setState(() {
+      _isAscending = !_isAscending;
+      courses.sort((a, b) {
+        final codeA = a.split(' - ')[0];
+        final codeB = b.split(' - ')[0];
+        return _isAscending ? codeA.compareTo(codeB) : codeB.compareTo(codeA);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -201,17 +216,20 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _toggleSort,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                   ),
                   child: Row(
                     children: [
                       Text(
-                        'Filter',
+                        'Sort',
                         style: AppStyles.buttonText.copyWith(color: AppColors.surface),
                       ),
-                      const Icon(Icons.arrow_drop_down, color: AppColors.surface),
+                      Icon(
+                        _isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: AppColors.surface,
+                      ),
                     ],
                   ),
                 ),
@@ -238,6 +256,7 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
                       return const SizedBox.shrink();
                     }
                     final isFav = favs.contains(course);
+                    final codeVar = course.split(' - ')[0];
                     return InkWell(
                       onTap: () => Navigator.push(
                         context,
@@ -255,6 +274,32 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
                         ),
                         child: ListTile(
                           title: Text(course, style: AppStyles.bodyText),
+                          // Subtitle showing prerequisites
+                          subtitle: FutureBuilder<QuerySnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('courses')
+                                .where('code', isEqualTo: codeVar)
+                                .limit(1)
+                                .get(),
+                            builder: (context, snapshotReq) {
+                              if (snapshotReq.connectionState == ConnectionState.waiting) {
+                                return const SizedBox();
+                              }
+                              if (snapshotReq.hasError) {
+                                return const Text('Prerequisites: Error');
+                              }
+                              final docs = snapshotReq.data?.docs;
+                              if (docs == null || docs.isEmpty) {
+                                return const Text('Prerequisites: None');
+                              }
+                              final dataReq = docs.first.data() as Map<String, dynamic>;
+                              final List<dynamic> reqs = dataReq['requirements'] ?? [];
+                              final String prereqText = reqs.isNotEmpty
+                                  ? reqs.map((e) => e.toString()).join(', ')
+                                  : 'None';
+                              return Text('Prerequisites: $prereqText');
+                            },
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

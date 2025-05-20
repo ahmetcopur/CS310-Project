@@ -4,9 +4,40 @@ import 'package:su_credit/utils/dimensions.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:su_credit/utils/favoriteCourses.dart';
 import 'package:su_credit/routes/schedule.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class CoursePlanningPage extends StatelessWidget {
+class CoursePlanningPage extends StatefulWidget {
   const CoursePlanningPage({super.key});
+
+  @override
+  State<CoursePlanningPage> createState() => _CoursePlanningPageState();
+}
+
+class _CoursePlanningPageState extends State<CoursePlanningPage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+    try {
+      final favoritesDoc = await FirebaseFirestore.instance
+          .collection('userPreferences')
+          .doc(userId)
+          .get();
+      if (favoritesDoc.exists &&
+          favoritesDoc.data()?['favoriteCourses'] is List) {
+        favoriteCourses.value =
+            List<String>.from(favoritesDoc.data()?['favoriteCourses'] ?? []);
+      }
+    } catch (e) {
+      debugPrint('Error loading favorites in CoursePlanningPage: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

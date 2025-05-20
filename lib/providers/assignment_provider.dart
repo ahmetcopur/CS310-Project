@@ -22,14 +22,12 @@ class AssignmentProvider with ChangeNotifier {
   // Filtered assignments
   List<Assignment> get upcomingAssignments =>
       _assignments.where((a) =>
-      !a.isCompleted &&
           a.dueDate.isAfter(DateTime.now()) &&
           a.dueDate.isBefore(DateTime.now().add(Duration(days: 7)))
       ).toList();
 
   List<Assignment> get overdueAssignments =>
       _assignments.where((a) =>
-      !a.isCompleted &&
           a.dueDate.isBefore(DateTime.now())
       ).toList();
 
@@ -93,7 +91,6 @@ class AssignmentProvider with ChangeNotifier {
         .where('createdBy', isEqualTo: _userId)
         .where('dueDate', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
         .where('dueDate', isLessThanOrEqualTo: Timestamp.fromDate(nextWeek))
-        .where('isCompleted', isEqualTo: false)
         .orderBy('dueDate')
         .snapshots()
         .listen(
@@ -145,24 +142,6 @@ class AssignmentProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
-      notifyListeners();
-      throw _error!;
-    }
-  }
-
-  // Toggle assignment completion status
-  Future<void> toggleCompletion(Assignment assignment) async {
-    try {
-      final updatedAssignment = assignment.copyWith(
-        isCompleted: !assignment.isCompleted,
-      );
-
-      await _firestore
-          .collection('assignments')
-          .doc(assignment.id)
-          .update({'isCompleted': updatedAssignment.isCompleted});
-    } catch (e) {
       _error = e.toString();
       notifyListeners();
       throw _error!;
