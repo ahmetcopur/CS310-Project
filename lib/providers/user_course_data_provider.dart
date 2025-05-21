@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_course_data.dart';
-import 'package:provider/provider.dart';
 
 /// Provider to manage user-specific course data (grades, completion)
 class UserCourseDataProvider with ChangeNotifier {

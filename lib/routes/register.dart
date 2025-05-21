@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
-import 'package:su_credit/utils/styles.dart';
 import 'package:su_credit/routes/home.dart';
 import 'package:provider/provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;

@@ -21,8 +21,8 @@ class GpaTrackerPage extends StatelessWidget {
           );
         },
         backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add),
-      ),
+        child: const Icon(Icons.add, color: AppColors.surface), // Changed icon color to AppColors.surface
+    ),
       body: Consumer<GpaProvider>(
         builder: (context, gpaProvider, _) {
           return Column(

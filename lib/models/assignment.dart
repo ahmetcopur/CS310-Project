@@ -54,7 +54,7 @@ class Assignment {
     DateTime? dueDate,
   }) {
     return Assignment(
-      id: this.id,
+      id: id,
       courseId: courseId ?? this.courseId,
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,

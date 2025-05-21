@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:provider/provider.dart';
-import 'package:su_credit/providers/assignment_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:su_credit/providers/assignment_provider.dart'; // Not used in the provided snippet directly for GpaPainter
+// import 'package:firebase_auth/firebase_auth.dart'; // Not used in the provided snippet directly for GpaPainter
+// import 'package:cloud_firestore/cloud_firestore.dart'; // Not used in the provided snippet directly for GpaPainter
 import 'package:su_credit/providers/gpa_provider.dart';
 
 class StudentDashboard extends StatelessWidget {
@@ -265,27 +265,60 @@ class _GpaPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint barPaint = Paint();
-    barPaint.color = AppColors.textTertiary;
-    canvas.drawRect(Rect.fromLTWH(0, 0, 20, size.height), barPaint);
+    // Main vertical bar
+    barPaint.color = AppColors.textTertiary; // Color of the background bar
+    canvas.drawRect(Rect.fromLTWH(0, 0, 20, size.height), barPaint); // The bar itself (width 20, full height)
 
-    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
-    for (final double tick in <double>[4.0, 3.0, 2.0, 1.0]) {
-      final double y = (4 - tick) / 3 * (size.height - 20) + 10;
-      barPaint.color = AppColors.background;
+    final TextPainter tp = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.start,
+    );
+
+    // Define scale parameters
+    const double scaleMax = 4.0;
+    const double scaleMin = 0.0; // Changed from 1.0 to 0.0
+    const double totalScaleSpan = scaleMax - scaleMin; // Now 4.0 (was 3.0)
+
+    // Effective drawing height for the scale, assuming padding for labels
+    // Assuming 10px padding at the top and 10px at the bottom of the scale itself
+    final double drawableHeight = size.height - 20;
+    const double topOffsetForScale = 10; // Top padding for the scale markings
+
+    // Ticks to display - added 0.0
+    final List<double> ticks = <double>[4.0, 3.0, 2.0, 1.0, 0.0];
+
+    for (final double tickValue in ticks) {
+      // Calculate y position for the tick mark
+      // (scaleMax - tickValue) / totalScaleSpan gives a normalized value (0 for top, 1 for bottom of scale range)
+      final double y = ((scaleMax - tickValue) / totalScaleSpan) * drawableHeight + topOffsetForScale;
+
+      barPaint.color = AppColors.background; // To "cut out" the tick from the main bar
       barPaint.strokeWidth = 2.0;
-      canvas.drawLine(Offset(0, y), Offset(35, y), barPaint);
+      canvas.drawLine(Offset(0, y), Offset(35, y), barPaint); // Tick line extends from x=0 to x=35
+
+      // Draw tick label
       tp.text = TextSpan(
-        text: tick.toStringAsFixed(1),
+        text: tickValue.toStringAsFixed(1), // e.g., "4.0", "3.0", "0.0"
+        // Assuming AppStyles.bodyText has a color that contrasts with AppColors.background
         style: AppStyles.bodyText.copyWith(fontSize: 12),
       );
       tp.layout();
-      tp.paint(canvas, Offset(40, y - 7));
+      // Center text vertically against the tick mark
+      tp.paint(canvas, Offset(40, y - (tp.height / 2)));
     }
-    final double x = gpa.clamp(1.0, 4.0);
-    final double yValue = (4 - x) / 3 * (size.height - 20) + 10;
-    barPaint.color = AppColors.accentPink;
+
+    // Clamp GPA to be within the new visual scale range (0.0 to 4.0)
+    final double clampedGpa = gpa.clamp(scaleMin, scaleMax); // scaleMin is now 0.0
+
+    // Calculate y position for the GPA indicator line based on clamped GPA and new scale span
+    final double yValue = ((scaleMax - clampedGpa) / totalScaleSpan) * drawableHeight + topOffsetForScale;
+
+    // Draw GPA indicator line
+    barPaint.color = AppColors.accentPink; // Color for the GPA line
     barPaint.strokeWidth = 3.0;
-    canvas.drawLine(Offset(0, yValue), Offset(60, yValue), barPaint);
+    canvas.drawLine(Offset(0, yValue), Offset(60, yValue), barPaint); // GPA line extends from x=0 to x=60
+
+    // Draw GPA value text (displaying the original GPA value, not necessarily clamped)
     tp.text = TextSpan(
       text: gpa.toStringAsFixed(1),
       style: AppStyles.sectionHeading.copyWith(
@@ -294,7 +327,8 @@ class _GpaPainter extends CustomPainter {
       ),
     );
     tp.layout();
-    tp.paint(canvas, Offset(62, yValue - 10));
+    // Position GPA text next to its line, centered vertically
+    tp.paint(canvas, Offset(62, yValue - (tp.height / 2)));
   }
 
   @override
@@ -302,6 +336,7 @@ class _GpaPainter extends CustomPainter {
     return old.gpa != gpa;
   }
 }
+
 
 class _WarningsCard extends StatelessWidget {
   const _WarningsCard();

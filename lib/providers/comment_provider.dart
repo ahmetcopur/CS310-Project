@@ -31,7 +31,7 @@ class CommentProvider with ChangeNotifier {
         .snapshots()
         .listen((snapshot) {
       final loaded = snapshot.docs
-          .map((doc) => Comment.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => Comment.fromMap(doc.data(), doc.id))
           .toList();
       // Sort by date descending
       loaded.sort((a, b) => b.date.compareTo(a.date));

@@ -42,7 +42,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     try {
       // Create Comment model and add via provider
       final comment = Comment(
-        id: '',
+        id: '', // ID will be set by the provider/backend
         courseId: _courseId,
         text: text,
         rating: _selectedRating,
@@ -56,6 +56,8 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         _ctrl.clear();
         _selectedRating = 0;
       });
+      // Hide keyboard
+      FocusScope.of(context).unfocus();
     } catch (e) {
       // Show error using snackbar
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,7 +99,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
                     return Center(
@@ -125,7 +127,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                   final String name = data['name'] ?? 'Unknown Course';
                   final int credits = data['credits'] ?? 0;
                   final String instructor = data['instructor'] ?? 'Not specified';
-                  final String description = data['description'] ?? 'No description available';
+                  final String description = data['description'] ?? 'No description available.'; // Added a period for empty description.
 
                   // Format information for display
                   final String info = '''
@@ -147,6 +149,7 @@ Prerequisites: $prerequisites''';
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start, // Align boxes to top
                         children: [
                           Expanded(child: _whiteBox(info, 'Course Info')),
                           const SizedBox(width: 12),
@@ -157,7 +160,7 @@ Prerequisites: $prerequisites''';
                       Text('Description',
                           style: AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
                       const SizedBox(height: 8),
-                      _whiteBox(description),
+                      _whiteBox(description.isEmpty ? 'No description available.' : description),
                     ],
                   );
                 }
@@ -173,38 +176,73 @@ Prerequisites: $prerequisites''';
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
+                boxShadow: [ // Optional: add a subtle shadow for depth
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               padding: EdgeInsets.all(AppDimensions.paddingMedium),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Rate Difficulty:', style: AppStyles.bodyText.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppDimensions.paddingSmall / 2),
                   Row(
                     children: List<Widget>.generate(5, (i) {
                       final star = i + 1;
                       return IconButton(
                         padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(), // Remove extra padding
                         icon: Icon(
                           _selectedRating >= star ? Icons.star : Icons.star_border,
                           color: AppColors.accentOrange,
+                          size: AppDimensions.iconSizeLarge, // Slightly larger stars
                         ),
                         onPressed: () => setState(() => _selectedRating = star),
                       );
                     }),
                   ),
+                  const Divider( // MODIFIED: Added Divider
+                    height: AppDimensions.paddingLarge, // More space for the divider
+                    thickness: 0.5,
+                    color: AppColors.textTertiary,
+                  ),
                   TextField(
                     controller: _ctrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Add comment and rate difficulty',
-                      border: InputBorder.none,
+                    decoration: InputDecoration( // MODIFIED: Using InputDecoration for better styling
+                      hintText: 'Share your experience with this course...',
+                      border: OutlineInputBorder( // Added a subtle border
+                        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
+                        borderSide: BorderSide(color: AppColors.textTertiary.withOpacity(0.5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
+                        borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppDimensions.paddingMedium,
+                        vertical: AppDimensions.paddingSmall,
+                      ),
                     ),
-                    maxLines: null,
+                    maxLines: 3, // Set a max lines
+                    minLines: 1, // Set a min lines
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _addComment(),
                   ),
+                  const SizedBox(height: AppDimensions.paddingMedium),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface, // MODIFIED: Text color to white/surface
+                        padding: EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge, vertical: AppDimensions.paddingSmall),
+                        textStyle: AppStyles.buttonText,
+                      ),
                       onPressed: _addComment,
                       child: const Text('Post'),
                     ),
@@ -219,20 +257,23 @@ Prerequisites: $prerequisites''';
             Consumer<CommentProvider>(
               builder: (_, commentProv, __) {
                 if (commentProv.isLoading) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
                 if (commentProv.error != null) {
                   return Center(
                     child: Text(
                       'Error loading comments: ${commentProv.error}',
-                      style: AppStyles.bodyTextSecondary,
+                      style: AppStyles.bodyTextSecondary.copyWith(color: AppColors.accentRed),
                     ),
                   );
                 }
                 final comments = commentProv.comments;
                 if (comments.isEmpty) {
                   return Center(
-                    child: Text('No comments yet', style: AppStyles.bodyTextSecondary),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingLarge),
+                      child: Text('Be the first to comment!', style: AppStyles.bodyTextSecondary.copyWith(fontSize: 16)),
+                    ),
                   );
                 }
                 return Column(
@@ -250,17 +291,27 @@ Prerequisites: $prerequisites''';
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (header != null)
-        Text(header,
-            style: AppStyles.sectionHeading.copyWith(color: AppColors.primary)),
-      if (header != null) const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppDimensions.paddingSmall / 2),
+          child: Text(header,
+              style: AppStyles.sectionHeading.copyWith(color: AppColors.primary, fontSize: 18)), // Slightly smaller header
+        ),
       Container(
         width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMedium),
+          boxShadow: [ // Optional: add a subtle shadow for depth
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         padding: EdgeInsets.all(AppDimensions.paddingMedium),
-        child: Text(text, style: AppStyles.bodyText),
+        child: Text(text, style: AppStyles.bodyText.copyWith(height: 1.4)), // Improved line height
       ),
     ],
   );
@@ -269,27 +320,64 @@ Prerequisites: $prerequisites''';
     decoration: BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
+      boxShadow: [ // Optional: add a subtle shadow for depth
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          spreadRadius: 1,
+          blurRadius: 3,
+          offset: const Offset(0, 1),
+        ),
+      ],
     ),
     margin: EdgeInsets.only(bottom: AppDimensions.paddingMedium),
     padding: EdgeInsets.all(AppDimensions.paddingMedium),
-    child: Column(
+    child: Row( // MODIFIED: Wrap with Row for icon
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            for (int i = 0; i < c.rating; i++)
-              Icon(Icons.star,
-                  size: AppDimensions.iconSizeSmall,
-                  color: AppColors.accentOrange),
-            const Spacer(),
-            Text(
-              '${c.date.day}.${c.date.month}.${c.date.year}',
-              style: AppStyles.bodyTextSecondary,
-            ),
-          ],
+        Padding( // MODIFIED: Icon padding
+          padding: EdgeInsets.only(top: AppDimensions.paddingSmall / 3, right: AppDimensions.paddingSmall),
+          child: Icon(
+            Icons.account_circle,
+            color: AppColors.primary.withOpacity(0.8), // Slightly more opaque icon
+            size: AppDimensions.iconSizeLarge, // Consistent icon size
+          ),
         ),
-        const SizedBox(height: 6),
-        Text(c.text, style: AppStyles.bodyText),
+        Expanded( // MODIFIED: Existing content goes here
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // User placeholder (could be replaced with actual user name later)
+                  Text(
+                    'User', // Placeholder
+                    style: AppStyles.bodyText.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${c.date.day.toString().padLeft(2, '0')}.${c.date.month.toString().padLeft(2, '0')}.${c.date.year}', // Formatted date
+                    style: AppStyles.bodyTextSecondary.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppDimensions.paddingSmall / 2),
+              Row( // Stars row
+                children: [
+                  for (int i = 0; i < c.rating; i++)
+                    Icon(Icons.star,
+                        size: AppDimensions.iconSizeSmall, // Smaller stars for comments
+                        color: AppColors.accentOrange),
+                  for (int i = c.rating; i < 5; i++) // Show empty stars
+                    Icon(Icons.star_border,
+                        size: AppDimensions.iconSizeSmall,
+                        color: AppColors.accentOrange.withOpacity(0.5)),
+                ],
+              ),
+              const SizedBox(height: AppDimensions.paddingSmall),
+              Text(c.text, style: AppStyles.bodyText.copyWith(height: 1.4, color: AppColors.textSecondary)), // Improved line height and text color
+            ],
+          ),
+        ),
       ],
     ),
   );

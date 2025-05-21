@@ -148,7 +148,7 @@ class Course {
     List<String>? requirements,
   }) {
     return Course(
-      id: this.id,
+      id: id,
       code: code ?? this.code,
       name: name ?? this.name,
       credits: credits ?? this.credits,
