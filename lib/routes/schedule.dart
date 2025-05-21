@@ -160,7 +160,9 @@ class _Meeting {
   final Day day;
   final int start;
   final int end;
-  const _Meeting(this.day, this.start, this.end);
+  final String? location;
+
+  const _Meeting(this.day, this.start, this.end, {this.location});
 
   // Add Firestore conversion methods
   Map<String, dynamic> toFirestore() {
@@ -168,6 +170,7 @@ class _Meeting {
       'day': day.toFirestore(),
       'start': start,
       'end': end,
+      if (location != null) 'location': location,
     };
   }
 
@@ -176,6 +179,7 @@ class _Meeting {
       _DayHelper.fromString(data['day'] ?? 'mon'),
       data['start'] ?? 8,
       data['end'] ?? 9,
+      location: data['location'] as String?,
     );
   }
 }
@@ -288,13 +292,15 @@ class _SchedulePageState extends State<SchedulePage> {
             final String day = sessionData['day'] ?? 'mon';
             final int startHour = sessionData['startHour'] ?? 9;
             final int endHour = sessionData['endHour'] ?? 10;
-            
+            final String? location = sessionData['location'] as String?;
+
             loadedCatalog.add(_Course(
               '${data['code'] ?? 'Unknown'}–${data['name'] ?? 'Course'}',
               [_Meeting(
                 _DayHelper.fromString(day),
                 startHour,
                 endHour,
+                location: location,
               )],
               courseId: doc.id, // Store the Firestore document ID
             ));

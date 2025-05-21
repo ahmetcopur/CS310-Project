@@ -17,6 +17,7 @@ class _RegisterState extends State<Register> {
   final _formKey = GlobalKey<FormState>();
   String email = '';
   String name = '';
+  String major = '';
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -79,6 +80,7 @@ class _RegisterState extends State<Register> {
           email,
           _passwordController.text.trim(),
           name: name.isNotEmpty ? name : null,
+          major: major.isNotEmpty ? major : null,
         );
 
         if (mounted) {
@@ -140,6 +142,26 @@ class _RegisterState extends State<Register> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onSaved: (value) => name = value?.trim() ?? '',
+                ),
+                const SizedBox(height: 16),
+                // Dropdown for selecting major
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.school, color: AppColors.primary),
+                    labelText: 'Major',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  items: ['CS', 'IE', 'PSY'].map((m) => DropdownMenuItem<String>(
+                    value: m,
+                    child: Text(m),
+                  )).toList(),
+                  value: major.isNotEmpty ? major : null,
+                  onChanged: (value) => setState(() => major = value ?? ''),
+                  onSaved: (value) => major = value ?? '',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Please select a major';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

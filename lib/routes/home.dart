@@ -111,7 +111,7 @@ class _HomeState extends State<Home> {
           classes.add({
             'code': course.code,
             'time': '${meeting.start}:00-${meeting.end}:00',
-            'room': '',
+            'room': meeting.location ?? '',
             'start': meeting.start,
           });
         }

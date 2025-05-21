@@ -50,7 +50,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Sign up with email and password
-  Future<void> signUp(String email, String password, {String? name}) async {
+  Future<void> signUp(String email, String password, {String? name, String? major}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -67,6 +67,7 @@ class AuthProvider with ChangeNotifier {
         await _firestore.collection('users').doc(userCredential.user!.uid).set({
           'email': email,
           'name': name ?? email.split('@').first, // Use part of email if no name provided
+          'major': major ?? '', // Major field added
           'createdAt': FieldValue.serverTimestamp(),
         });
       }

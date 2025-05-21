@@ -341,6 +341,7 @@ class _AddGivenCoursesPageState extends State<AddGivenCoursesPage> {
             const SizedBox(height: 16),
             if (allCourses.isNotEmpty)
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: (_selectedCourseId != null && allCourses.any((c) => c.id == _selectedCourseId))
                     ? _selectedCourseId
                     : (allCourses.isNotEmpty ? allCourses.first.id : null),
