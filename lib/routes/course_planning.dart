@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/dimensions.dart';
 import 'package:su_credit/utils/styles.dart';
-import 'package:su_credit/utils/favoriteCourses.dart';
-import 'package:su_credit/routes/schedule.dart';
+import 'package:su_credit/utils/favoriteCourses.dart'; // Assuming this file exists and is correctly set up
+import 'package:su_credit/routes/schedule.dart'; // Assuming this file exists and provides necessary ValueNotifiers and functions
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async'; // add import for subscription
+import 'dart:async';
 
 class CoursePlanningPage extends StatefulWidget {
   const CoursePlanningPage({super.key});
@@ -16,14 +16,13 @@ class CoursePlanningPage extends StatefulWidget {
 }
 
 class _CoursePlanningPageState extends State<CoursePlanningPage> {
-  late StreamSubscription<User?> _authSubscription; // listen for auth changes
+  late StreamSubscription<User?> _authSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
-    loadSchedulesForCurrentUser();
-    // Reload schedules whenever auth state changes (e.g., logout/login)
+    loadSchedulesForCurrentUser(); // Make sure this function is available from schedule.dart or similar
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       loadSchedulesForCurrentUser();
     });
@@ -37,9 +36,8 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
 
   Future<void> _loadFavorites() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    // Clear existing favorites first
-    favoriteCourses.value = [];
-    
+    favoriteCourses.value = []; // Assuming favoriteCourses is a ValueNotifier<List<String>>
+
     if (userId == null) return;
     try {
       final favoritesDoc = await FirebaseFirestore.instance
@@ -49,7 +47,7 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
       if (favoritesDoc.exists &&
           favoritesDoc.data()?['favoriteCourses'] is List) {
         favoriteCourses.value =
-            List<String>.from(favoritesDoc.data()?['favoriteCourses'] ?? []);
+        List<String>.from(favoritesDoc.data()?['favoriteCourses'] ?? []);
       }
     } catch (e) {
       debugPrint('Error loading favorites in CoursePlanningPage: $e');
@@ -78,7 +76,7 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
                     const Icon(Icons.arrow_back, color: AppColors.surface),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  const SizedBox(width: 8),
+                  AppDimensions.horizontalSpace(AppDimensions.paddingSmall),
                   Text('Course Planning',
                       style: AppStyles.screenTitle
                           .copyWith(color: AppColors.surface)),
@@ -93,22 +91,7 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
                   children: [
                     const Expanded(child: _ScheduleSection()),
                     AppDimensions.verticalSpace(AppDimensions.paddingMedium),
-                    Expanded(
-                      child: _SectionBox(
-                        title: 'Recommended Course Plan',
-                        child: InteractiveViewer(
-                          maxScale: 4,
-                          minScale: 1,
-                          panEnabled: true,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                                AppDimensions.borderRadiusMedium),
-                            child: Image.asset('assets/schedule.png',
-                                fit: BoxFit.contain),
-                          ),
-                        ),
-                      ),
-                    ),
+                    const Expanded(child: _CoursePlanningTipsSection()),
                     AppDimensions.verticalSpace(AppDimensions.paddingMedium),
                     const Expanded(child: _SearchCoursesSection()),
                   ],
@@ -127,8 +110,10 @@ class _ScheduleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SectionBox(
-    title: 'Schedule',
+    title: 'Your Schedules', // Changed title for clarity
     child: ValueListenableBuilder<List<Set<dynamic>>>(
+      // Assuming savedSchedules is ValueNotifier<List<Set<dynamic>>>
+      // Ensure 'dynamic' is replaced with your actual Course model if possible
       valueListenable: savedSchedules,
       builder: (_, list, __) {
         final tiles = <Widget>[];
@@ -138,15 +123,25 @@ class _ScheduleSection extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (ctx) => SchedulePage(index: i)),
+                    builder: (ctx) => SchedulePage(index: i)), // Ensure SchedulePage is defined
               ),
               child: Container(
                 margin: EdgeInsets.only(
-                    right: i == 0 ? AppDimensions.paddingSmall : 0),
+                  // Space between schedule items
+                    left: i > 0 ? AppDimensions.paddingSmall : 0,
+                    right: AppDimensions.paddingSmall
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(
                       AppDimensions.borderRadiusMedium),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: AppDimensions.elevationLow,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -156,21 +151,22 @@ class _ScheduleSection extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ValueListenableBuilder<int?>(
-                          valueListenable: primaryScheduleIndex,
+                          valueListenable: primaryScheduleIndex, // Assuming this is a ValueNotifier<int?>
                           builder: (_, primary, __) {
                             final isPrimary = primary == i;
                             return IconButton(
                               icon: Icon(
                                 isPrimary ? Icons.star : Icons.star_border,
-                                color: isPrimary ? Colors.amber : Colors.grey,
+                                color: isPrimary ? Colors.amber : Colors.grey.shade400, // Material colors for star
+                                size: AppDimensions.iconSizeMedium,
                               ),
-                              onPressed: () => setPrimarySchedule(i),
+                              onPressed: () => setPrimarySchedule(i), // Ensure this function is available
                             );
                           },
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => deleteSchedule(i),
+                          icon: Icon(Icons.delete_outline, color: AppColors.accentRed, size: AppDimensions.iconSizeMedium),
+                          onPressed: () => deleteSchedule(i), // Ensure this function is available
                         ),
                       ],
                     ),
@@ -180,23 +176,32 @@ class _ScheduleSection extends StatelessWidget {
             ),
           ));
         }
+        // Add button
         tiles.add(Expanded(
           child: InkWell(
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (ctx) => const SchedulePage(index: -1)),
+                  builder: (ctx) => const SchedulePage(index: -1)), // -1 for new schedule
             ),
             child: Container(
-              margin: EdgeInsets.only(
-                  left: list.isEmpty ? 0 : AppDimensions.paddingSmall),
+              // No left margin if it's the only item, otherwise add padding.
+              // The previous items already have right padding.
+              margin: EdgeInsets.only(left: list.isEmpty ? 0 : AppDimensions.paddingSmall),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.primary.withOpacity(0.9),
                 borderRadius:
                 BorderRadius.circular(AppDimensions.borderRadiusMedium),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    blurRadius: AppDimensions.elevationLow,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: const Center(
-                  child: Icon(Icons.add, size: 48, color: AppColors.surface)),
+              child: Center(
+                  child: Icon(Icons.add, size: AppDimensions.iconSizeLarge * 1.5, color: AppColors.surface)), // Slightly larger add icon
             ),
           ),
         ));
@@ -206,60 +211,169 @@ class _ScheduleSection extends StatelessWidget {
   );
 }
 
+class _CoursePlanningTipsSection extends StatelessWidget {
+  const _CoursePlanningTipsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionBox(
+      title: 'Course Planning Tips',
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildTipItem(
+            context,
+            icon: Icons.checklist_rtl_outlined,
+            text: 'Review degree requirements and prerequisites early on.',
+          ),
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall / 2),
+          _buildTipItem(
+            context,
+            icon: Icons.calendar_today_outlined,
+            text: 'Plan your schedule to balance workload and avoid time conflicts.',
+          ),
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall / 2),
+          _buildTipItem(
+            context,
+            icon: Icons.explore_outlined,
+            text: 'Explore electives aligning with your interests or career goals.',
+          ),
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall / 2),
+          _buildTipItem(
+            context,
+            icon: Icons.group_work_outlined,
+            text: 'Consult with your academic advisor regularly for guidance.',
+          ),
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall / 2),
+          _buildTipItem(
+            context,
+            icon: Icons.favorite_border_outlined,
+            text: 'Use "Favorite Courses" to shortlist courses for future planning.',
+          ),
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall / 2),
+          _buildTipItem(
+            context,
+            icon: Icons.lightbulb_outline,
+            text: 'Mix challenging and manageable courses each semester.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipItem(BuildContext context, {required IconData icon, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppColors.accentTeal, size: AppDimensions.iconSizeMedium - 4), // Slightly smaller icon
+        AppDimensions.horizontalSpace(AppDimensions.paddingSmall),
+        Expanded(
+          child: Text(
+            text,
+            style: AppStyles.bodyText.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
 class _SearchCoursesSection extends StatelessWidget {
   const _SearchCoursesSection();
 
   @override
   Widget build(BuildContext context) => _SectionBox(
-    title: 'Search Courses',
+    title: 'Your Course Shortlist', // Renamed for clarity
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Favorites',
-            style: AppStyles.bodyText.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.accentTeal)),
-        const Divider(thickness: 1),
+        Text('Favorite Courses',
+            style: AppStyles.subHeading.copyWith( // Using AppStyles.subHeading
+                color: AppColors.accentTeal
+            )
+        ),
+        Divider(
+          thickness: 1,
+          height: AppDimensions.paddingSmall * 1.5,
+          color: AppColors.backgroundColor, // Lighter divider
+        ),
         ValueListenableBuilder<List<String>>(
           valueListenable: favoriteCourses,
           builder: (_, favs, __) => favs.isEmpty
               ? Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('No favorites yet.',
-                style: AppStyles.bodyText),
+            padding: EdgeInsets.only(top: AppDimensions.paddingSmall),
+            child: Text('No favorite courses yet. Use search to find and add them!',
+                style: AppStyles.bodyTextSecondary), // Using AppStyles.bodyTextSecondary
           )
               : Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: favs
-                    .map((c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• ',
-                          style: TextStyle(fontSize: 14)),
-                      Expanded(
-                        child: Text(c,
-                            style: AppStyles.bodyText,
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
-                  ),
-                ))
-                    .toList(),
+            child: Scrollbar( // Added Scrollbar for better UX if list is long
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(right: AppDimensions.paddingSmall / 2), // Padding for scrollbar
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: favs
+                      .map((c) => Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppDimensions.paddingSmall / 2),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Icon(
+                            Icons.star_border_purple500_outlined, // Material icon
+                            color: AppColors.accent, // Using AppColors.accent
+                            size: AppDimensions.iconSizeSmall,
+                          ),
+                        ),
+                        AppDimensions.horizontalSpace(AppDimensions.paddingSmall),
+                        Expanded(
+                          child: Text(c,
+                            style: AppStyles.bodyText.copyWith(
+                              fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+                      .toList(),
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: () => Navigator.pushNamed(context, '/search_courses'),
-          child: Text('See More',
-              style: AppStyles.bodyText.copyWith(
-                  decoration: TextDecoration.underline,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary)),
+        if (favoriteCourses.value.isNotEmpty)
+          AppDimensions.verticalSpace(AppDimensions.paddingSmall),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            icon: Icon(Icons.search, size: AppDimensions.iconSizeSmall),
+            label: Text('Find Courses',
+                style: AppStyles.buttonText.copyWith(
+                  fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+                )
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppDimensions.paddingMedium,
+                  vertical: AppDimensions.paddingSmall
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.borderRadiusSmall),
+              ),
+              elevation: AppDimensions.elevationLow,
+            ),
+            onPressed: () => Navigator.pushNamed(context, '/search_courses'),
+          ),
         ),
       ],
     ),
@@ -278,6 +392,13 @@ class _SectionBox extends StatelessWidget {
       color: AppColors.surface,
       borderRadius:
       BorderRadius.circular(AppDimensions.borderRadiusMedium),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.07),
+          blurRadius: AppDimensions.elevationMedium, // Using AppDimensions
+          offset: const Offset(0, 2), // Adjusted offset for a subtle shadow
+        ),
+      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
