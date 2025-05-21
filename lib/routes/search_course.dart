@@ -78,6 +78,9 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
   Future<void> _loadFavorites() async {
     if (_userId == null) return;
     try {
+      // Clear any existing favorites first before loading the current user's favorites
+      favoriteCourses.value = [];
+      
       final favoriteDoc = await FirebaseFirestore.instance
           .collection('userPreferences')
           .doc(_userId)
@@ -85,9 +88,7 @@ class _SearchCoursesPageState extends State<SearchCoursesPage> {
       if (!mounted) return;
       if (favoriteDoc.exists && favoriteDoc.data()?['favoriteCourses'] is List) {
         final storedFavorites = List<String>.from(favoriteDoc.data()?['favoriteCourses'] ?? []);
-        final currentFavorites = favoriteCourses.value;
-        final combinedFavoritesSet = {...currentFavorites, ...storedFavorites};
-        favoriteCourses.value = combinedFavoritesSet.toList();
+        favoriteCourses.value = storedFavorites;
       }
     } catch (e) {
       debugPrint('Error loading favorites: $e');

@@ -37,6 +37,9 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
 
   Future<void> _loadFavorites() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
+    // Clear existing favorites first
+    favoriteCourses.value = [];
+    
     if (userId == null) return;
     try {
       final favoritesDoc = await FirebaseFirestore.instance

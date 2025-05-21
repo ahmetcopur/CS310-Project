@@ -249,9 +249,16 @@ class _LoginState extends State<Login> {
                       ),
                       const SizedBox(height: 10),
                       TextButton(
-                        onPressed: _isLoading ? null : () {
-                          Navigator.pushNamed(context, '/register');
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                setState(() => _isLoading = true);
+                                await FirebaseAuth.instance.signOut();
+                                if (mounted) {
+                                  Navigator.pushNamed(context, '/register');
+                                }
+                                setState(() => _isLoading = false);
+                              },
                         child: Text(
                           'Create an account',
                           style: AppStyles.buttonText.copyWith(

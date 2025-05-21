@@ -5,6 +5,8 @@ import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/routes/home.dart';
 import 'package:provider/provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:su_credit/providers/user_course_data_provider.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -72,6 +74,8 @@ class _RegisterState extends State<Register> {
       });
 
       try {
+        // Sign out any existing user before registration to ensure clean state
+        await FirebaseAuth.instance.signOut();
         // Use AuthProvider instead of direct FirebaseAuth
         final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
 
@@ -83,8 +87,15 @@ class _RegisterState extends State<Register> {
           major: major.isNotEmpty ? major : null,
         );
 
+        // After successfully registering, ensure UserCourseDataProvider is updated with the new user
+        final userCourseProvider = Provider.of<UserCourseDataProvider>(context, listen: false);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          userCourseProvider.listenToUser(user.uid);
+        }
+
         if (mounted) {
-          await _showDialog('Registration Successful', 'Your account has been created.');
+          await _showDialog('Registration Successful', 'Your account has been created and you are now signed in.');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(

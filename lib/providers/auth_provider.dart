@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:su_credit/utils/favoriteCourses.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -35,6 +36,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Clear favorites before signing in to start fresh
+      clearFavorites();
+      
       await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -56,6 +60,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Clear favorites for a fresh start
+      clearFavorites();
+      
       // Create the user account
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -70,6 +77,10 @@ class AuthProvider with ChangeNotifier {
           'major': major ?? '', // Major field added
           'createdAt': FieldValue.serverTimestamp(),
         });
+        
+        // The user is automatically signed in after createUserWithEmailAndPassword
+        // But we need to make sure our auth provider state reflects this
+        _user = userCredential.user;
       }
 
       _isLoading = false;
@@ -88,6 +99,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Clear favorites before signing out
+      clearFavorites();
+      
       await _auth.signOut();
       _isLoading = false;
       notifyListeners();
