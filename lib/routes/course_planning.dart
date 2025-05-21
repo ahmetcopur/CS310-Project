@@ -6,6 +6,7 @@ import 'package:su_credit/utils/favoriteCourses.dart';
 import 'package:su_credit/routes/schedule.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async'; // add import for subscription
 
 class CoursePlanningPage extends StatefulWidget {
   const CoursePlanningPage({super.key});
@@ -15,10 +16,23 @@ class CoursePlanningPage extends StatefulWidget {
 }
 
 class _CoursePlanningPageState extends State<CoursePlanningPage> {
+  late StreamSubscription<User?> _authSubscription; // listen for auth changes
+
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    loadSchedulesForCurrentUser();
+    // Reload schedules whenever auth state changes (e.g., logout/login)
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      loadSchedulesForCurrentUser();
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _loadFavorites() async {
@@ -131,9 +145,34 @@ class _ScheduleSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(
                       AppDimensions.borderRadiusMedium),
                 ),
-                child: Center(
-                    child: Text('Schedule ${i + 1}',
-                        style: AppStyles.bodyText)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Schedule ${i + 1}', style: AppStyles.bodyText),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ValueListenableBuilder<int?>(
+                          valueListenable: primaryScheduleIndex,
+                          builder: (_, primary, __) {
+                            final isPrimary = primary == i;
+                            return IconButton(
+                              icon: Icon(
+                                isPrimary ? Icons.star : Icons.star_border,
+                                color: isPrimary ? Colors.amber : Colors.grey,
+                              ),
+                              onPressed: () => setPrimarySchedule(i),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => deleteSchedule(i),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ));
@@ -186,27 +225,31 @@ class _SearchCoursesSection extends StatelessWidget {
             child: Text('No favorites yet.',
                 style: AppStyles.bodyText),
           )
-              : Column(
-            children: favs
-                .map((c) => Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ',
-                      style: TextStyle(fontSize: 14)),
-                  Expanded(
-                    child: Text(c,
-                        style: AppStyles.bodyText,
-                        overflow: TextOverflow.ellipsis),
+              : Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: favs
+                    .map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• ',
+                          style: TextStyle(fontSize: 14)),
+                      Expanded(
+                        child: Text(c,
+                            style: AppStyles.bodyText,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
                   ),
-                ],
+                ))
+                    .toList(),
               ),
-            ))
-                .toList(),
+            ),
           ),
         ),
-        const Spacer(),
+        const SizedBox(height: 8),
         InkWell(
           onTap: () => Navigator.pushNamed(context, '/search_courses'),
           child: Text('See More',

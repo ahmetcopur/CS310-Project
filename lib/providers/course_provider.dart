@@ -161,6 +161,49 @@ class CourseProvider with ChangeNotifier {
     }
   }
 
+  // Get all prerequisites for a course by its ID
+  Future<List<String>> getCoursePrerequisites(String courseId) async {
+    try {
+      final docSnapshot = await _firestore.collection('courses').doc(courseId).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        if (data != null && data['requirements'] is List) {
+          return List<String>.from(data['requirements']);
+        }
+      }
+      return [];
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return [];
+    }
+  }
+
+  // Check if a course has prerequisites and if they're met
+  Future<bool> arePrerequisitesMet(String courseId, List<String> completedCourseIds) async {
+    try {
+      final prerequisites = await getCoursePrerequisites(courseId);
+      if (prerequisites.isEmpty) return true;
+      
+      // Get all completed course codes
+      final completedCourses = await Future.wait(
+        completedCourseIds.map((id) => getCourseById(id))
+      );
+      
+      final completedCourseCodes = completedCourses
+          .where((course) => course != null)
+          .map((course) => course!.code)
+          .toList();
+      
+      // Check if all prerequisites are in completed courses
+      return prerequisites.every((prereq) => completedCourseCodes.contains(prereq));
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

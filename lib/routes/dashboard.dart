@@ -5,97 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:su_credit/providers/assignment_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:su_credit/providers/gpa_provider.dart';
 
-class StudentDashboard extends StatefulWidget {
+class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
-
-  @override
-  State<StudentDashboard> createState() => _StudentDashboardState();
-}
-
-class _StudentDashboardState extends State<StudentDashboard> {
-  double _currentGPA = 0;
-  List<Map<String, dynamic>> _examAssignments = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDashboardData();
-  }
-
-  Future<void> _loadDashboardData() async {
-    // Compute GPA from user_course_data
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    double gpa = 0.0;
-    if (userId != null && userId.isNotEmpty) {
-      final ucdSnapshot = await FirebaseFirestore.instance
-          .collection('user_course_data')
-          .where('createdBy', isEqualTo: userId)
-          .where('isCompleted', isEqualTo: true)
-          .get();
-      double totalPoints = 0;
-      int totalCredits = 0;
-      for (var doc in ucdSnapshot.docs) {
-        final data = doc.data();
-        final gradeValue = (data['grade'] as num?)?.toDouble() ?? 0.0;
-        final courseId = data['courseId'] as String? ?? '';
-        final courseDoc = await FirebaseFirestore.instance
-            .collection('courses')
-            .doc(courseId)
-            .get();
-        if (courseDoc.exists) {
-          final credits = (courseDoc.data()?['credits'] as num?)?.toInt() ?? 0;
-          totalPoints += gradeValue * credits;
-          totalCredits += credits;
-        }
-      }
-      gpa = totalCredits > 0 ? totalPoints / totalCredits : 0.0;
-    }
-
-    final assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
-
-    try {
-      _currentGPA = gpa;
-
-      // Load upcoming assignments without awaiting (it's a void method)
-      assignmentProvider.loadUpcomingAssignments();
-
-      // Give it a moment to load
-      await Future.delayed(Duration(milliseconds: 500));
-
-      // Get the assignments after they've loaded
-      final assignments = assignmentProvider.assignments;
-
-      // Create formatted list for UI
-      final formattedAssignments = assignments.map((assignment) {
-        final daysUntilDue = assignment.dueDate.difference(DateTime.now()).inDays;
-        final color = daysUntilDue <= 7 ? Colors.lightBlue : Colors.pinkAccent;
-        final title = '${assignment.courseId} - ${assignment.title} in $daysUntilDue days!';
-
-        return {
-          'title': title,
-          'color': color,
-        };
-      }).toList();
-
-      // Only update if widget is still mounted
-      if (mounted) {
-        setState(() {
-          _currentGPA = gpa;
-          _examAssignments = formattedAssignments;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // On error, use default values
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,82 +18,86 @@ class _StudentDashboardState extends State<StudentDashboard> {
         children: [
           _DashboardHeader(title: 'Student Dashboard'),
           Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionHeader(
-                    title: 'Graduation Progress',
-                    buttonLabel: 'See All',
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/graduation_progress'),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: const [
-                        Expanded(
-                          child: _CreditChip(
-                            label: 'Area Credits',
-                            current: 3,
-                            required: 9,
-                            accentColor: AppColors.accentBlue,
-                          ),
+            child: Consumer<GpaProvider>(
+              builder: (context, gpaProvider, _) {
+                if (gpaProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionHeader(
+                        title: 'Graduation Progress',
+                        buttonLabel: 'See All',
+                        onPressed: () => Navigator.pushNamed(context, '/graduation_progress'),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: const [
+                            Expanded(
+                              child: _CreditChip(
+                                label: 'Area Credits',
+                                current: 3,
+                                required: 9,
+                                accentColor: AppColors.accentBlue,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _CreditChip(
+                                label: 'Core Credits',
+                                current: 12,
+                                required: 31,
+                                accentColor: AppColors.accentTeal,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _CreditChip(
+                                label: 'Free Credits',
+                                current: 5,
+                                required: 9,
+                                accentColor: AppColors.accentPink,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _CreditChip(
+                                label: 'Total Credits',
+                                current: 20,
+                                required: 49,
+                                accentColor: AppColors.accentOrange,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _CreditChip(
-                            label: 'Core Credits',
-                            current: 12,
-                            required: 31,
-                            accentColor: AppColors.accentTeal,
-                          ),
+                      ),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _GpaStatusCard(currentGpa: gpaProvider.gpa),
+                            const SizedBox(width: 16),
+                            const Expanded(child: _WarningsCard()),
+                          ],
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _CreditChip(
-                            label: 'Free Credits',
-                            current: 5,
-                            required: 9,
-                            accentColor: AppColors.accentPink,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _CreditChip(
-                            label: 'Total Credits',
-                            current: 20,
-                            required: 49,
-                            accentColor: AppColors.accentOrange,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 32),
+                      _SectionHeader(
+                        title: 'Exam & Assignments',
+                        buttonLabel: 'See More',
+                        onPressed: () => Navigator.pushNamed(context, '/assignments'),
+                      ),
+                      _ExamList(),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _GpaStatusCard(currentGpa: _currentGPA),
-                        const SizedBox(width: 16),
-                        const Expanded(child: _WarningsCard()),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _SectionHeader(
-                    title: 'Exam & Assignments',
-                    buttonLabel: 'See More',
-                    onPressed: () => Navigator.pushNamed(context, '/assignments'),
-                  ),
-                  _ExamList(examAssignments: _examAssignments),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -449,24 +366,18 @@ class _WarningsCard extends StatelessWidget {
 }
 
 class _ExamList extends StatelessWidget {
-  final List<Map<String, dynamic>> examAssignments;
-
-  const _ExamList({
-    this.examAssignments = const [],
-  });
+  const _ExamList();
 
   @override
   Widget build(BuildContext context) {
     // If no Firestore data, use hardcoded data
-    final displayAssignments = examAssignments.isEmpty
-        ? [
+    final displayAssignments = [
       {'title': 'CS 310 - Project Phase 2 Submission in 5 days!', 'color': Colors.lightBlue},
       {'title': 'CS 307 - Midterm Exam in 7 days!', 'color': Colors.lightBlue},
       {'title': 'CS 403 - Midterm Exam in 10 days!', 'color': Colors.lightBlue},
       {'title': 'CS 305 - Homework 2 Submission in 12 days!', 'color': Colors.pinkAccent},
       {'title': 'Math 306 - Midterm Exam in 15 days!', 'color': Colors.pinkAccent},
-    ]
-        : examAssignments;
+    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -487,9 +398,9 @@ class _ExamList extends StatelessWidget {
                         style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                     Expanded(
                       child: Text(
-                        e['title'],
+                        e['title'] as String,
                         style: AppStyles.bodyText.copyWith(
-                          color: e['color'],
+                          color: e['color'] as Color?,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

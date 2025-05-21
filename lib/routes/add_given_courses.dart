@@ -7,6 +7,7 @@ import '../models/user_course_data.dart';
 import '../models/course.dart';
 import '../providers/user_course_data_provider.dart';
 import '../providers/course_provider.dart';
+import '../providers/gpa_provider.dart';
 
 class AddGivenCoursesPage extends StatefulWidget {
   const AddGivenCoursesPage({super.key});
@@ -109,6 +110,8 @@ class _AddGivenCoursesPageState extends State<AddGivenCoursesPage> {
                                 icon: const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () async {
                                   await userCourseProvider.deleteEntry(c.id);
+                                  // Refresh GPA after deleting a course
+                                  Provider.of<GpaProvider>(context, listen: false).refreshGpa();
                                 },
                               ),
                             ],
@@ -174,6 +177,10 @@ class _AddGivenCoursesPageState extends State<AddGivenCoursesPage> {
                                   createdAt: entry.createdAt,
                                 ),
                               );
+                              
+                              // Refresh GPA after updating
+                              Provider.of<GpaProvider>(context, listen: false).refreshGpa();
+                              
                               setState(() {
                                 _editingCourseDocId = null;
                                 _gradeController.clear();
@@ -194,6 +201,10 @@ class _AddGivenCoursesPageState extends State<AddGivenCoursesPage> {
                                   createdAt: DateTime.now(),
                                 ),
                               );
+                              
+                              // Refresh GPA after adding
+                              Provider.of<GpaProvider>(context, listen: false).refreshGpa();
+                              
                               setState(() {
                                 _gradeController.clear();
                               });

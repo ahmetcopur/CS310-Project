@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:provider/provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
+import 'package:su_credit/providers/user_course_data_provider.dart';
 import 'add_given_courses.dart';
+import 'package:su_credit/routes/schedule.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class Home extends StatefulWidget {
   final String userName;
@@ -13,18 +17,32 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  late StreamSubscription<User?> _authSubscription;
   bool _isLoading = true;
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _todayClasses = [];
   List<Map<String, dynamic>> _tomorrowClasses = [];
   late final app_auth.AuthProvider _authProvider;
+  late VoidCallback _scheduleListener;
+  late VoidCallback _primaryListener;
 
   @override
   void initState() {
     super.initState();
+    // Listen to schedule changes to refresh classes
+    _scheduleListener = () => _loadUserData();
+    savedSchedules.addListener(_scheduleListener);
+    _primaryListener = () => _loadUserData();
+    primaryScheduleIndex.addListener(_primaryListener);
+    // Reload schedules on auth changes
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      loadSchedulesForCurrentUser();
+    });
+    // Initial load of schedules and user data
+    loadSchedulesForCurrentUser();
+    _loadUserData();
     // Initialize providers here to avoid async context issues
     _authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
-    _loadUserData();
   }
 
   Future<void> _loadUserData() async {
@@ -73,23 +91,47 @@ class _HomeState extends State<Home> {
 
   // This would be implemented to fetch from Firestore in a real app
   Future<List<Map<String, dynamic>>> _getClassesForDay(DateTime date) async {
-    // Simulate Firestore fetch
-    await Future.delayed(Duration(milliseconds: 300));
-
-    // This is where you would query Firestore for classes on this date
-    // For now, return dummy data based on the day
-    if (date.weekday == DateTime.now().weekday) {
-      return [
-        {'code': 'CS310-0', 'time': '9:40-10.30', 'room': 'FASS G062'},
-        {'code': 'PSY340-0', 'time': '14.40-15.30', 'room': 'FASS G049'},
-      ];
-    } else {
-      return [
-        {'code': 'CS408-0', 'time': '11:40-13.30', 'room': 'FENS L045'},
-        {'code': 'CS307-0', 'time': '13.40-14.30', 'room': 'FENS G077'},
-        {'code': 'CS310-0', 'time': '14.40-16.30', 'room': 'FASS G062'},
-      ];
+    // simulate brief delay
+    await Future.delayed(const Duration(milliseconds: 200));
+    // get primary schedule index and schedules
+    final int? primaryIndex = primaryScheduleIndex.value;
+    if (primaryIndex == null || primaryIndex < 0 || primaryIndex >= savedSchedules.value.length) {
+      return [];
     }
+    final schedule = savedSchedules.value[primaryIndex];
+    // map weekday (Mon=1) to Day enum index
+    final dayIdx = date.weekday - 1;
+    if (dayIdx < 0 || dayIdx >= Day.values.length) return [];
+    final targetDay = Day.values[dayIdx];
+    // collect all meetings on this day
+    final classes = <Map<String, dynamic>>[];
+    for (var course in schedule) {
+      for (var meeting in course.meetings) {
+        if (meeting.day == targetDay) {
+          classes.add({
+            'code': course.code,
+            'time': '${meeting.start}:00-${meeting.end}:00',
+            'room': '',
+            'start': meeting.start,
+          });
+        }
+      }
+    }
+    // sort by start hour
+    classes.sort((a, b) => (a['start'] as int).compareTo(b['start'] as int));
+    // remove helper 'start' key
+    return classes.map((c) {
+      c.remove('start');
+      return c;
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    savedSchedules.removeListener(_scheduleListener);
+    primaryScheduleIndex.removeListener(_primaryListener);
+    _authSubscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -150,6 +192,8 @@ class _HomeState extends State<Home> {
           TextButton(
             onPressed: () async {
               // Use auth provider for logout
+              final userCourseProvider = Provider.of<UserCourseDataProvider>(context, listen: false);
+              userCourseProvider.clear(); // Clear user-specific data on logout
               await _authProvider.signOut();
               Navigator.pushReplacementNamed(context, '/login');
             },

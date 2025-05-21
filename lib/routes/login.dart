@@ -6,6 +6,8 @@ import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/styles.dart';
 import 'package:provider/provider.dart';
 import 'package:su_credit/providers/auth_provider.dart' as app_auth;
+import 'package:su_credit/providers/user_course_data_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -64,6 +66,13 @@ class _LoginState extends State<Login> {
         // Use AuthProvider instead of direct FirebaseAuth
         final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
         await authProvider.signIn(email, password);
+
+        // After login, update user-specific providers
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final userCourseProvider = Provider.of<UserCourseDataProvider>(context, listen: false);
+          userCourseProvider.listenToUser(user.uid);
+        }
 
         // Only navigate if still mounted (no errors occurred)
         if (mounted) {
