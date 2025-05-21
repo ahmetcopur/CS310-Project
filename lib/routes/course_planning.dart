@@ -22,7 +22,7 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
   void initState() {
     super.initState();
     _loadFavorites();
-    loadSchedulesForCurrentUser(); // Make sure this function is available from schedule.dart or similar
+    loadSchedulesForCurrentUser();
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       loadSchedulesForCurrentUser();
     });
@@ -36,7 +36,7 @@ class _CoursePlanningPageState extends State<CoursePlanningPage> {
 
   Future<void> _loadFavorites() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    favoriteCourses.value = []; // Assuming favoriteCourses is a ValueNotifier<List<String>>
+    favoriteCourses.value = [];
 
     if (userId == null) return;
     try {
@@ -110,10 +110,8 @@ class _ScheduleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SectionBox(
-    title: 'Your Schedules', // Changed title for clarity
+    title: 'Your Schedules',
     child: ValueListenableBuilder<List<Set<dynamic>>>(
-      // Assuming savedSchedules is ValueNotifier<List<Set<dynamic>>>
-      // Ensure 'dynamic' is replaced with your actual Course model if possible
       valueListenable: savedSchedules,
       builder: (_, list, __) {
         final tiles = <Widget>[];
@@ -123,11 +121,10 @@ class _ScheduleSection extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (ctx) => SchedulePage(index: i)), // Ensure SchedulePage is defined
+                    builder: (ctx) => SchedulePage(index: i)),
               ),
               child: Container(
                 margin: EdgeInsets.only(
-                  // Space between schedule items
                     left: i > 0 ? AppDimensions.paddingSmall : 0,
                     right: AppDimensions.paddingSmall
                 ),
@@ -151,22 +148,22 @@ class _ScheduleSection extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ValueListenableBuilder<int?>(
-                          valueListenable: primaryScheduleIndex, // Assuming this is a ValueNotifier<int?>
+                          valueListenable: primaryScheduleIndex,
                           builder: (_, primary, __) {
                             final isPrimary = primary == i;
                             return IconButton(
                               icon: Icon(
                                 isPrimary ? Icons.star : Icons.star_border,
-                                color: isPrimary ? Colors.amber : Colors.grey.shade400, // Material colors for star
+                                color: isPrimary ? Colors.amber : Colors.grey.shade400,
                                 size: AppDimensions.iconSizeMedium,
                               ),
-                              onPressed: () => setPrimarySchedule(i), // Ensure this function is available
+                              onPressed: () => setPrimarySchedule(i),
                             );
                           },
                         ),
                         IconButton(
                           icon: Icon(Icons.delete_outline, color: AppColors.accentRed, size: AppDimensions.iconSizeMedium),
-                          onPressed: () => deleteSchedule(i), // Ensure this function is available
+                          onPressed: () => deleteSchedule(i),
                         ),
                       ],
                     ),
@@ -176,17 +173,14 @@ class _ScheduleSection extends StatelessWidget {
             ),
           ));
         }
-        // Add button
         tiles.add(Expanded(
           child: InkWell(
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (ctx) => const SchedulePage(index: -1)), // -1 for new schedule
+                  builder: (ctx) => const SchedulePage(index: -1)),
             ),
             child: Container(
-              // No left margin if it's the only item, otherwise add padding.
-              // The previous items already have right padding.
               margin: EdgeInsets.only(left: list.isEmpty ? 0 : AppDimensions.paddingSmall),
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.9),
@@ -201,7 +195,7 @@ class _ScheduleSection extends StatelessWidget {
                 ],
               ),
               child: Center(
-                  child: Icon(Icons.add, size: AppDimensions.iconSizeLarge * 1.5, color: AppColors.surface)), // Slightly larger add icon
+                  child: Icon(Icons.add, size: AppDimensions.iconSizeLarge * 1.5, color: AppColors.surface)),
             ),
           ),
         ));
@@ -265,14 +259,14 @@ class _CoursePlanningTipsSection extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppColors.accentTeal, size: AppDimensions.iconSizeMedium - 4), // Slightly smaller icon
+        Icon(icon, color: AppColors.accentTeal, size: AppDimensions.iconSizeMedium - 4),
         AppDimensions.horizontalSpace(AppDimensions.paddingSmall),
         Expanded(
           child: Text(
             text,
             style: AppStyles.bodyText.copyWith(
               color: AppColors.textPrimary,
-              fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+              fontSize: AppDimensions.fontSizeSmall,
             ),
           ),
         ),
@@ -287,19 +281,19 @@ class _SearchCoursesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SectionBox(
-    title: 'Your Course Shortlist', // Renamed for clarity
+    title: 'Your Course Shortlist',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Favorite Courses',
-            style: AppStyles.subHeading.copyWith( // Using AppStyles.subHeading
+            style: AppStyles.subHeading.copyWith(
                 color: AppColors.accentTeal
             )
         ),
         Divider(
           thickness: 1,
           height: AppDimensions.paddingSmall * 1.5,
-          color: AppColors.backgroundColor, // Lighter divider
+          color: AppColors.backgroundColor,
         ),
         ValueListenableBuilder<List<String>>(
           valueListenable: favoriteCourses,
@@ -307,13 +301,13 @@ class _SearchCoursesSection extends StatelessWidget {
               ? Padding(
             padding: EdgeInsets.only(top: AppDimensions.paddingSmall),
             child: Text('No favorite courses yet. Use search to find and add them!',
-                style: AppStyles.bodyTextSecondary), // Using AppStyles.bodyTextSecondary
+                style: AppStyles.bodyTextSecondary),
           )
               : Expanded(
-            child: Scrollbar( // Added Scrollbar for better UX if list is long
+            child: Scrollbar(
               thumbVisibility: true,
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(right: AppDimensions.paddingSmall / 2), // Padding for scrollbar
+                padding: EdgeInsets.only(right: AppDimensions.paddingSmall / 2),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: favs
@@ -325,8 +319,8 @@ class _SearchCoursesSection extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 2.0),
                           child: Icon(
-                            Icons.star_border_purple500_outlined, // Material icon
-                            color: AppColors.accent, // Using AppColors.accent
+                            Icons.star_border_purple500_outlined,
+                            color: AppColors.accent,
                             size: AppDimensions.iconSizeSmall,
                           ),
                         ),
@@ -334,7 +328,7 @@ class _SearchCoursesSection extends StatelessWidget {
                         Expanded(
                           child: Text(c,
                             style: AppStyles.bodyText.copyWith(
-                              fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+                              fontSize: AppDimensions.fontSizeSmall,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 2,
@@ -357,7 +351,7 @@ class _SearchCoursesSection extends StatelessWidget {
             icon: Icon(Icons.search, size: AppDimensions.iconSizeSmall),
             label: Text('Find Courses',
                 style: AppStyles.buttonText.copyWith(
-                  fontSize: AppDimensions.fontSizeSmall, // Using AppDimensions
+                  fontSize: AppDimensions.fontSizeSmall,
                 )
             ),
             style: ElevatedButton.styleFrom(
@@ -395,8 +389,8 @@ class _SectionBox extends StatelessWidget {
       boxShadow: [
         BoxShadow(
           color: Colors.black.withOpacity(0.07),
-          blurRadius: AppDimensions.elevationMedium, // Using AppDimensions
-          offset: const Offset(0, 2), // Adjusted offset for a subtle shadow
+          blurRadius: AppDimensions.elevationMedium,
+          offset: const Offset(0, 2),
         ),
       ],
     ),
