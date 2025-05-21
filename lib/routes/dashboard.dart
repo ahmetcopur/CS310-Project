@@ -256,25 +256,8 @@ class _GpaStatusCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 16),
-          InkWell(
-            onTap: () => Navigator.pushNamed(context, '/graduation_progress'),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.school, size: 16, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Check graduation credits',
-                  style: AppStyles.bodyText.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Removed the InkWell for "Check graduation credits" and the SizedBox above it
+          // as requested, because "View Graduation Progress" button serves the same purpose.
         ],
       ),
     );
@@ -385,8 +368,20 @@ class _ExamList extends StatelessWidget {
         final primaryIndex = primaryScheduleIndex.value;
         final primaryCourses = (primaryIndex != null && primaryIndex >= 0 && primaryIndex < savedSchedules.value.length)
             ? savedSchedules.value[primaryIndex]
-            : <dynamic>{};
-        final primaryCourseIds = primaryCourses.map((c) => c.courseId).toSet();
+            : <dynamic>{}; // Should be Set<Course> or similar, ensure type safety
+
+        // Ensure primaryCourses is iterable and its elements have courseId
+        Set<dynamic> primaryCourseIds = {};
+        if (primaryCourses is Iterable) {
+          primaryCourseIds = primaryCourses.map((c) {
+            // Add defensive check for courseId if c can be dynamic
+            if (c != null && c.courseId != null) { // Assuming Course class has courseId
+              return c.courseId;
+            }
+            return null; // Or handle error
+          }).where((id) => id != null).toSet();
+        }
+
         final filtered = (primaryIndex == null)
             ? []
             : assignments.where((a) => primaryCourseIds.contains(a.courseId)).toList();
@@ -417,7 +412,7 @@ class _ExamList extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 300),
               child: ListView.separated(
-                physics: AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: filtered.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
@@ -428,8 +423,8 @@ class _ExamList extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(18),
+                      color: AppColors.surface, // This inner container might not need its own color if parent is already AppColors.surface
+                      borderRadius: BorderRadius.circular(18), // This might be redundant if items are meant to look flat within the parent
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
