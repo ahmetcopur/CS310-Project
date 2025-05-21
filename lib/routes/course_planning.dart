@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:su_credit/utils/colors.dart';
 import 'package:su_credit/utils/dimensions.dart';
 import 'package:su_credit/utils/styles.dart';
-import 'package:su_credit/utils/favoriteCourses.dart'; // Assuming this file exists and is correctly set up
-import 'package:su_credit/routes/schedule.dart'; // Assuming this file exists and provides necessary ValueNotifiers and functions
+import 'package:su_credit/utils/favoriteCourses.dart';
+import 'package:su_credit/routes/schedule.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
