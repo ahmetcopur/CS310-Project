@@ -10,8 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter/painting.dart';
 import 'dart:ui' as ui;
 
-// Assuming AppColors and AppStyles are defined as before
-
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
 
